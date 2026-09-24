@@ -1,0 +1,118 @@
+# ============================================================
+# macOS
+# ============================================================
+
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+
+# ============================================================
+# LaTeX
+# ============================================================
+
+*.dvi
+*.aux
+*.bbl
+*.blg
+*.lof
+*.log
+*.lot
+*.synctex.gz
+*.synctex
+*.toc
+*.spl
+
+
+# ============================================================
+# Editor temporary files
+# ============================================================
+
+*~
+*.swp
+*.swo
+*.bak
+.netrwhist
+Session.vim
+Sessionx.vim
+tags
+[._]*.un~
+
+
+# ============================================================
+# Fortran / C / C++
+# ============================================================
+
+# Dependencies
+*.d
+
+# Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled headers
+*.gch
+*.pch
+
+# Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran modules
+*.mod
+*.smod
+
+# Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.app
+
+# Coverage
+*.gcda
+*.gcno
+*.gcov
+
+
+# ============================================================
+# AK software
+# ============================================================
+
+LOG-*
+/export
+/hi
+/bin
+struc.git
+source_lean
+t6copy
+exforcopy
+talyscopy
+create
+clean
+/structure/data
+/structure/source
+/structure/tools
+structure.setup
