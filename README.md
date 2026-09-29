@@ -28,7 +28,7 @@ The installer compiles each program directly; GNU make is not required.
 From the `autotalys_tools/` directory, run:
 
 ```bash
-./installation_tools.sh
+./install_autotalys_tools.bash
 ```
 
 The script can also be invoked by its full path from another directory. 
