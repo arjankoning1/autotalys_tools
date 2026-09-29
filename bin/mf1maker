@@ -1,0 +1,757 @@
+#!/bin/bash
+#
+#
+echo
+echo "       mf1maker-2.2 (Version September 28 2026) (C) Copyright 2026 Arjan Koning, All Rights Reserved"
+echo
+echo $0 $@
+echo
+if [ $# -eq 0 ] ; then
+  echo "MF1MAKER                                                                MF1MAKER"
+  echo
+  echo
+  echo
+  echo "NAME"
+  echo "       mf1maker - Script to make the MF1 information section of a nuclear data file"
+  echo 
+  echo "SYNOPSIS"
+  echo "       mf1maker [option] [value]"
+  echo 
+  echo "DESCRIPTION"
+  echo "       With mf1maker, creation of the information section of MF1 is automated:"
+  echo "         - For various incident particles "
+  echo "         - For various types of nuclear data file"
+  echo "         - For various grades of completeness of the nuclear data file"
+  echo "         - Using external imported pieces of text"
+  echo
+# 
+################################################################################
+# Test input and output of all options
+################################################################################
+#
+  echo 
+  echo "   Operation mode:"
+  echo 
+  echo "       Usage: mf1maker [option] [value]"
+  echo
+  echo "       Some option flags should be accompanied by a value"
+  echo
+  echo "       Examples: mf1maker -element Nb -mass 93   (minimal input file: give nuclide)"
+  echo "                 mf1maker -element Zr -mass 90 -proj p -type acf -talysfile talys.inp"
+  echo "                  (proton activation file for Zr90 with TALYS input file in text)"
+  echo
+  echo "   General options: projectile, nuclide and energies"
+  echo
+  echo "       -proj [projectile] "
+  echo "             Projectile: n,g,p,d,t,h or a [default: -proj n]"
+  echo
+  echo "       -element [element]    "
+  echo "                Element [default: -element Nb]"
+  echo
+  echo "       -mass [mass]   "
+  echo "             Mass number [default: -mass 93]"
+  echo
+  echo "       -Liso [Liso]"
+  echo "             Isomeric symbol of target: blank, M, N, ... [default: -Liso blank]"
+  echo
+  echo "       -emin [energy] "
+  echo "          Minimum incident energy in MeV [default: 1.e-11]"
+  echo
+  echo "       -emax [energy] "
+  echo "          Maximum incident energy in MeV [default: 200]"
+  echo
+  echo
+  echo "   Other keywords "
+  echo 
+  echo "       -type [code] "
+  echo "             Type of text file: gpf - General purpose file"
+  echo "                                acf - activation file"
+  echo "                                    [default: gpf]"
+  echo
+  echo "       -[no]detail"
+  echo "                   Include detailed MT number information [default: -detail]"
+  echo 
+  echo "       -[no]fission"
+  echo "                   Include fission information [default: -nofission]"
+  echo 
+  echo "       -[no]covariance"
+  echo "                   Include covariance information [default: -nocovariance]"
+  echo 
+  echo "       -[no]random"
+  echo "                   Include information of random file [default: -norandom]"
+  echo 
+  echo "       -addfile [filename] "
+  echo "                  Specific file to be included in text [default: blank]"
+  echo
+  echo "       -talysfile [filename] "
+  echo "                  TALYS input file to be included in text [default: blank]"
+  echo
+  echo "       -mf2file [filename] "
+  echo "                  Resonance information file to be included in text [default: mf2.txt]"
+  echo
+  echo "       -textfile [filename] "
+  echo "                  Name of text output file [default: endf.txt]"
+  echo
+  echo "AUTHOR"
+  echo "       mf1maker was written by Arjan Koning."
+  exit
+fi
+#
+################################################################################
+# Initialization (default values) of variables
+################################################################################
+#
+proj=n
+element=Nb
+mass=93
+Liso=
+emin=1.e-11
+emax=200
+type=gpf
+detail=1
+fission=0
+covariance=0
+random=0
+mf2file=mf1.tares.txt
+addfile=add.txt
+talysfile=xxx
+textfile=endf.txt
+#
+################################################################################
+# Read command line arguments
+################################################################################
+#
+while [ $# -ge 1 ] ; do
+  case $1 in
+    -proj)  proj=$2;shift 2;;
+    -element)  element=$2;shift 2;;
+    -mass)  mass=$2;shift 2;;
+    -Liso)  Liso=$2;shift 2;;
+    -emin)  emin=$2;shift 2;;
+    -emax)  emax=$2;shift 2;;
+    -type)  type=$2;shift 2;;
+    -mf2file)  mf2file=$2;shift 2;;
+    -addfile)  addfile=$2;shift 2;;
+    -talysfile)  talysfile=$2;shift 2;;
+    -textfile)  textfile=$2;shift 2;;
+    -detail)  detail=1;shift;;
+    -nodetail)  detail=0;shift;;
+    -fission)  fission=1;shift;;
+    -nofission)  fission=0;shift;;
+    -covariance)  covariance=1;shift;;
+    -nocovariance)  covariance=0;shift;;
+    -random)  random=1;shift;;
+    -norandom)  random=0;shift;;
+    *)  echo "Option [$1] invalid";exit;;
+  esac
+done
+#
+################################################################################
+# Test input and prevent unlogical option combinations
+################################################################################
+#
+if [ $type != gpf ] && [ $type != acf ] ; then
+  echo " -type must be equal to gpf or acf "
+  exit
+fi
+#
+################################################################################
+# Initialization
+################################################################################
+#
+author='A.J. Koning'
+lab='IAEA'
+if [ $proj == n ] ; then
+  particle='neutron'
+  author='A.J. Koning and D. Rochman'
+  lab='IAEA - PSI'
+fi
+if [ $proj == g ] ; then
+  particle='photon'
+fi
+if [ $proj == p ] ; then
+  particle='proton'
+fi
+if [ $proj == d ] ; then
+  particle='deuteron'
+fi
+if [ $proj == t ] ; then
+  particle='triton'
+fi
+if [ $proj == h ] ; then
+  particle='helium-3'
+fi
+if [ $proj == a ] ; then
+  particle='alpha'
+fi
+if [ $type == gpf ] ; then
+  typelib='general purpose'
+fi
+if [ $type == acf ] ; then
+  typelib='activation'
+fi
+if [ $fission -eq 1 ] && [ $mass -ge 215 ] ; then
+  actfis=1
+else
+  actfis=0
+fi
+#
+################################################################################
+# Create text file
+################################################################################
+#
+if [ $random -eq 1 ] ; then
+  cat >> $textfile << EOI
+
+              Random nuclear data file
+EOI
+fi
+cat > $textfile << EOI
+
+TENDL-2026 (TALYS Evaluated Nuclear Data Library)
+
+$element$mass$Liso $particle $typelib library 
+
+Author: ${author}, ${lab}
+
+Ref.: A.J. Koning, D. Rochman, J.-Ch. Sublet, N. Dzysiuk, 
+      M. Fleming, and S. van der Marck, TENDL: Complete nuclear 
+      data library for innovative nuclear science and 
+      technology, Nuclear Data Sheets 155, 1 (2019).
+
+************** G E N E R A L   I N F O R M A T I O N *************
+
+This evaluated data file is based on a software system built 
+around the nuclear model code TALYS [kon23], version 2.0. It is
+part of a large collection of isotopic evaluations, all created by
+running the system with either adjusted or default input 
+parameters. This means that the data in the entire collection have
+been tested in detail for many isotopes against individual 
+experimental data, while for other isotopes it is only as good as 
+the global quality of TALYS at the moment. The mutual quality of 
+all individual data files is however consistent: The same set of 
+nuclear models is used and, equally important, the same ENDF-6 
+formatting procedures for each isotope. The data file has been 
+created automatically using the ENDF-6 format generator TEFAL.
+
+The resulting data file provides a complete representation of 
+EOI
+if [ $type == gpf ] ; then
+  cat >> $textfile << EOI
+nuclear data needed for transport, activation, damage, heating, 
+radioactivity, and shielding applications over the incident 
+$particle energy range from $emin to $emax MeV. 
+
+All transport and activation data for neutrons, charged particles,
+photons and residual nuclides are filed. This includes cross 
+sections, angular distributions, double-differential spectra, 
+isomeric production, discrete and continuum photon production 
+cross sections, residual production cross sections and recoils. 
+This general purpose evaluation can thus be used as both 
+transport and activation library. 
+EOI
+  if [ $covariance -eq 1 ]  && [ $detail -eq 1 ] ; then
+  cat >> $textfile << EOI
+
+A complete set of covariance data is included, which is stored
+in MF31-40.
+EOI
+  fi
+fi
+if [ $type == acf ] ; then
+  cat >> $textfile << EOI
+nuclear data needed for activation over the incident
+$particle energy range from $emin to $emax MeV. 
+
+All activation data are filed. This includes partial cross 
+sections and residual production cross sections including 
+isomeric production.
+EOI
+fi
+cat >> $textfile << EOI
+
+**** N U C L I D E    S P E C I F I C   I N F O R M A T I O N ****
+EOI
+if [ -e "$addfile" ] ; then
+  cat >> $textfile << EOI
+
+               Specific information
+
+EOI
+  cat $addfile >> $textfile 
+fi
+if [ $proj == n ] && [ $type == gpf ] && [ -e $mf2file ] ; then
+  cat >> $textfile << EOI
+
+                      Resonance Range
+
+EOI
+  cat $mf2file >> $textfile 
+fi
+if [ -e "$talysfile" ] ; then
+  cat >> $textfile << EOI
+
+               Adjusted TALYS input parameters
+
+EOI
+  cat $talysfile >> $textfile 
+fi
+if [ -e autonorm.inp ] ; then
+  cat >> $textfile << EOI
+
+              Data adopted from other libraries
+
+EOI
+  cat autonorm.inp >> $textfile 
+fi
+if [ ! -e "$mf2file" ] && [ ! -e "$talysfile" ] && [ ! -e "$addfile" ]  && [ ! -e autonorm.inp ] ; then
+  cat >> $textfile << EOI
+
+None
+EOI
+fi
+if [ $random -eq 1 ] ; then
+  cat >> $textfile << EOI
+
+Differential weight:
+EOI
+fi
+cat >> $textfile << EOI
+
+***************************** T A L Y S **************************
+
+TALYS is a computer code system for the prediction and analysis 
+of nuclear reactions. TALYS simulates reactions that involve 
+neutrons, gamma-rays, protons, deuterons, tritons, helions and 
+alpha-particles, in the 1 keV - 200 MeV energy range. This is 
+achieved by implementing a suite of nuclear reaction models into 
+a single code system. This nuclear data file is based on a 
+theoretical analysis that utilizes the optical model, compound 
+nucleus statistical theory, fission, direct reactions and 
+pre-equilibrium processes, in combination with databases and 
+models for nuclear structure. The following output of TALYS is 
+stored in this data file:
+
+EOI
+if [ $type == gpf ] ; then
+  if [ $detail -eq 1 ] ; then
+    cat >> $textfile << EOI
+- Total, elastic and non-elastic cross sections
+- Inelastic cross sections to discrete states
+- Exclusive channel cross sections, e.g. (n,g), (n,2n), (n,np),..
+- Inelastic scattering angular distributions to discrete states
+- Exclusive channel energy spectra
+- Exclusive channel double-differential spectra
+- Exclusive gamma production for discrete states and continuum
+EOI
+  else
+    cat >> $textfile << EOI
+- Elastic and non-elastic cross sections
+EOI
+  fi
+  cat >> $textfile << EOI
+- Elastic scattering angular distributions
+- Recoil data
+- Total particle cross sections, e.g. (${proj},xn), (${proj},xp),..
+- Total particle energy spectra
+- Total particle double-differential spectra
+EOI
+fi
+cat >> $textfile << EOI
+- Isomeric and ground state cross sections
+- Residual production cross sections
+
+For a description of the used nuclear models and their 
+parameterization we refer to [kon19]. If for this specific
+nuclide we deviate from the global parameterization, it is made
+explicit above under Nuclide Specific Information.
+
+***************** F I L E   I N F O R M A T I O N ****************
+
+##### MF1: GENERAL INFORMATION 
+ 
+- MT451    : Descriptive data and directory
+  
+This text and the full directory of used MF/MT sections.
+EOI
+if [ $proj == n ] ; then
+  if [ $actfis -eq 1 ] ; then
+    cat >> $textfile << EOI
+
+- MT452    : Average number of neutrons per fission, nubar
+
+- MT455    : Average number of delayed neutrons per fission
+
+- MT456    : Average number of prompt neutrons per fission
+
+- MT458    : Components of energy release due to fission
+
+EOI
+  fi
+  cat >> $textfile << EOI
+
+##### MF2: RESONANCE PARAMETERS
+
+- MT151    : Resonance parameters
+
+Details about the origin of the resonance parameters for this
+nuclide are given above in this description. In general, both a 
+Resolved and an Unresolved Resonance Range are given. 
+EOI
+fi
+cat >> $textfile << EOI
+
+##### MF3: REACTION CROSS SECTIONS
+
+All the data present in the following MT-sections have been 
+calculated with TALYS, possibly normalized to experimental data. 
+If the maximal cross section in an excitation function over the 
+whole energy range does not exceed 1.e-9 b, the MT-number is not 
+included. Cross sections lower than 1.e-20 b are assumed to have 
+no physical meaning and are set to zero. All MT numbers extend up 
+to the highest incident energy.
+The following reaction channels/MT numbers are generally included:
+EOI
+if [ $type == gpf ] ;  then
+  if [ $proj == n ] ;  then
+    cat >> $textfile << EOI
+
+- MT1      : Total cross section 
+
+Calculated with the optical model over the whole energy range,
+or partly reproduced using experimental data.
+
+- MT2      : Elastic scattering cross section 
+
+Obtained by subtracting the non-elastic cross section from the
+total cross section. 
+EOI
+  else
+    cat >> $textfile << EOI
+
+- MT2      : Elastic scattering cross section: nuclear +
+             interference terms
+
+Obtained by integrating the "nuclear-plus-interference" angular
+distributions of MF=6.  Note that because of the interference
+effect, the tabulations in both MF=6 and MF=3 can be negative at
+some energies and angles.
+EOI
+  fi
+  if [ $detail -eq 1 ] ;  then
+    cat >> $textfile << EOI
+
+- MT3      : Non-elastic cross section 
+
+Calculated with the optical model over the whole energy range.
+
+- MT4      : Total inelastic cross section
+
+Sum of MT=51-91.
+EOI
+  fi
+fi
+cat >> $textfile << EOI
+
+- MT5      : (${proj},anything) cross section
+
+MT5 contains the reactions which can not be stored in any other 
+MT-number. The information of MF3/MT5 can be combined with 
+MF6/MT5 to obtain residual production cross sections particle 
+production cross sections and (double-)differential cross 
+sections.
+EOI
+if [ $type == gpf ] ;  then
+  if [ $detail -eq 1 ] ;  then
+    cat >> $textfile << EOI
+
+- MT16     : (${proj},2n) cross section
+- MT17     : (${proj},3n) cross section
+- MT22     : (${proj},na) cross section
+- MT28     : (${proj},np) cross section
+- MT51-90  : (${proj},n') cross section for 1st-40th excited state
+- MT91     : (${proj},n') continuum cross section
+- MT102    : (${proj},gamma) cross section 
+- MT103    : (${proj},p) cross section
+- MT104    : (${proj},d) cross section
+- MT105    : (${proj},t) cross section
+- MT106    : (${proj},h) cross section
+- MT107    : (${proj},a) cross section
+- MT600-610: (${proj},p) cross section for 0th-10th excited state
+- MT649    : (${proj},p) continuum cross section
+- MT650-655: (${proj},d) cross section for 0th-5th excited state
+- MT699    : (${proj},d) continuum cross section
+- MT700-705: (${proj},t) cross section for 0th-5th excited state
+- MT749    : (${proj},t) continuum cross section
+- MT750-755: (${proj},h) cross section for 0th-5th excited state
+- MT799    : (${proj},h) continuum cross section
+- MT800-810: (${proj},a) cross section for 0th-10th excited state
+- MT849    : (${proj},a) continuum cross section
+EOI
+  fi
+fi
+if [ $proj == n ] && [ $type == gpf ] ;  then
+  cat >> $textfile << EOI
+
+##### MF4: ANGULAR DISTRIBUTIONS OF SECONDARY PARTICLES
+
+We use MF4 for the neutron scattering angular distribution for 
+discrete levels. 
+
+- MT2      : Elastic angular distribution         
+
+The flag LTT=3 is used to indicate a switch at some high energy,
+generally 50 MeV, from a Legendre representation to a tabulated 
+representation. For incident energies below this energy, the 
+Legendre coefficients are given on a sufficiently precise energy 
+grid. They are a sum of calculated Legendre coefficients for 
+compound nucleus and shape-elastic scattering. For higher 
+incident energies, relative angular distributions are tabulated 
+on an angular grid. 
+
+- MT51-70  : (${proj},n') angular distribution for 1st-20th state
+- MT600-610: (${proj},p) angular distribution for 0th-10th state
+- MT650-655: (${proj},d) angular distribution for 0th-5th state
+- MT700-705: (${proj},t) angular distribution for 0th-5th state
+- MT750-755: (${proj},h) angular distribution for 0th-5th state
+- MT800-810: (${proj},a) angular distribution for 0th-10th state
+EOI
+  if [ $actfis -eq 1 ] ; then
+    cat >> $textfile << EOI
+
+##### MF5: FISSION NEUTRON SPECTRUM
+
+The data for the fission neutron spectrum are provided by the 
+TANES code[kon19]. Both prompt and delayed spectra are given.
+
+- MT18     : Prompt fission neutron spectrum
+
+- MT455    : Delayed fission neutron spectrum
+EOI
+  fi
+fi
+cat >> $textfile << EOI
+
+##### MF6: PRODUCT ENERGY-ANGLE DISTRIBUTIONS
+
+In MF6 we store all secondary energy, angle, and energy-angle 
+distributions, as well as all residual and discrete + continuum
+photon production cross sections for channels other than capture 
+(MT102) and reactions to discrete levels (MT51,etc.). 
+All data are generated with TALYS.
+
+- MT5      : (${proj},anything) yields and energy-angle distributions
+
+MT5 contains, in this order,
+For neutrons up to alpha particles and photons:
+- the production yields per particle for the whole energy range
+- the secondary energy-angle distributions per particles which are
+  not represented by explicit MT numbers. On a secondary energy 
+  grid the relative emission spectra are given together with the 
+  parameters for the Kalbach systematics for angular 
+  distributions. Inelastic scattering cross sections for discrete 
+  states have been broadened and added to the continuum spectra. 
+For each residual product:
+- the production yields for the whole energy range.
+- the recoil 
+These distributions can be multiplied with MF3/MT5 to get 
+the production cross sections and (double-)differential cross 
+sections.
+EOI
+if [ $detail -eq 1 ] && [ $type == gpf ] ; then
+  cat >> $textfile << EOI
+
+- MT16     : (${proj},2n) energy-angle distr. and photon production
+
+First, for each type of outgoing particle, the (trivial) integer 
+particle yields are given. Next, on a sufficiently dense incident 
+energy grid the secondary energy-angle distributions are 
+specified by means of the relative emission spectra and the 
+parameters for the Kalbach systematics for angular distributions. 
+Next, the photon yield is tabulated as a function of incident 
+energy. For each incident energy, the photon production is given 
+for all discrete gamma lines present in the final nucleus. A
+continuum photon distribution is added to this. We assume 
+isotropy for all produced gamma rays.
+
+For the following MT-numbers, the same procedure as for MT16 is
+followed:
+
+- MT17 : (${proj},3n) energy-angle distr. and photon production
+- MT22 : (${proj},na) energy-angle distr. and photon production
+- MT28 : (${proj},np) energy-angle distr. and photon production
+- MT91 : (${proj},n') continuum energy-angle distr. and phot. prod.
+- MT649: (${proj},p) continuum energy-angle distr. and photon prod.
+- MT699: (${proj},d) continuum energy-angle distr. and photon prod.
+- MT749: (${proj},t) continuum energy-angle distr. and photon prod.
+- MT809: (${proj},h) continuum energy-angle distr. and photon prod.
+- MT849: (${proj},a) continuum energy-angle distr. and photon prod.
+EOI
+fi
+cat >> $textfile << EOI
+
+##### MF8: RADIOACTIVE DECAY DATA
+
+For reactions to isomers, MF8 designates where the information 
+for isomeric versus ground state production, or residual
+production can be found, i.e. for each MT number it points to 
+either MF6, MF9 or MF10.
+EOI
+if [ $detail -eq 1 ] && [ $type == gpf ] ; then
+  cat >> $textfile << EOI
+
+##### MF9: MULTIPLICITIES FOR PRODUCTION OF RADIOACTIVE NUCLIDES
+
+MF9 is used for isomer production by non-threshold reactions.
+Final states with a lifetime that exceeds 1 second are treated 
+as isomer.
+
+##### MF10: CROSS SECTIONS FOR PRODUCTION OF RADIOACTIVE NUCLIDES
+
+MF10 is used for isomer production by threshold reactions.
+Final states with a lifetime that exceeds 1 second are treated 
+as isomer.
+EOI
+fi
+if [ $proj == n ] && [ $type == gpf ] ; then
+  cat >> $textfile << EOI
+
+##### MF12: PHOTON PRODUCTION YIELD DATA
+
+MF12 is used for the photon production for two types of reactions:
+- Reactions to discrete levels (MT51, etc.) For this transition 
+  probabilities are used (LO=2)
+- Photons from neutron capture (MT102). Here multiplicities are
+  given
+
+##### MF14: PHOTON ANGULAR DISTRIBUTIONS
+
+All photon production is considered as isotropic
+
+##### MF15: PHOTON ENERGY SPECTRA
+
+For capture (MT102), the photon energy spectrum is given.
+EOI
+fi
+if [ $covariance -eq 1 ] ; then
+  if [ $proj == n ]  ; then
+    if [ $actfis -eq 1 ] ; then
+      cat >> $textfile << EOI
+
+##### MF31: COVARIANCES OF AVERAGE FISSION NEUTRON DATA
+
+The covariance data for the number of fission neutrons are 
+provided by the TAFIS code[kon19]. On the basis of rather simple 
+assumptions a full covariance file for the total nubar is 
+obtained.
+EOI
+    fi
+    cat >> $textfile << EOI
+
+##### MF32: COVARIANCES OF RESONANCE PARAMETERS
+
+In MF32, we store the covariances of resonance parameters,
+and more details are given above in this description. In most
+versions of TENDL, this information is now stored in MF33.
+EOI
+  fi
+  cat >> $textfile << EOI
+
+##### MF33: COVARIANCES OF NEUTRON CROSS SECTIONS
+
+In MF33, we store the covariances of most, but not all, reaction
+channels that are given in MF3. All covariances are generated
+with the TASMAN code [kon19], which generates TALYS runs using 
+a Monte Carlo parameter method.
+For each MT-number, the information consists of:
+1. Covariances for MTa, Ea and MTa, Ea (variances)
+2. Covariances for MTa, Ea and MTa, Eb (correlations for the
+   same reaction channel between different energies)
+3. Covariances for MTa, Ea and MTb, Ea (correlations between
+   different reaction channels for the same energy)
+4. Covariances for MTa, Ea and MTb, Eb (correlations between
+   different reaction channels for different energies)
+Classes 1 and 2 are covered by NI-type subsubsections with
+flag LB=5, followed by a LB=8 section which contains
+the cross section variances multiplied by 1.e-3. Next, classes 3 
+and 4 are covered by flag LB=6 to account for the different 
+energy grids that two correlating MT-sections may have. Since 
+the total correlation matrix is fully symmetric, we only need to 
+include the correlation elements between different MT-numbers 
+once, and we do that in the subsection with the lowest of the 
+two MT-numbers. We include covariance information for all the 
+total cross sections, the lumped partial cross sections and the 
+individual inelastic cross sections per level (MT51,...). We do 
+not include covariances for MT600 and higher MT-numbers. For the 
+most important channels, we include cross-channel correlations.
+EOI
+  if [ $proj == n ]  ; then
+    cat >> $textfile << EOI
+
+##### MF34: COVARIANCES OF ANGULAR DISTRIBUTIONS 
+
+In MF34, we store the covariances of the elastic scattering 
+angular distributions that are given in MF4/MT2. All covariances 
+are generated with the TASMAN code [kon19], which generates 
+TALYS runs using a Monte Carlo parameter method. The tables are 
+restricted to MT2 and contain covariances for the first 6 
+Legendre coefficients. Both intra- and inter-correlations of the 
+various Legendre coefficients are given. As in MF33, the LB5 
+representation is used.
+EOI
+    if [ $actfis -eq 1 ] ; then
+      cat >> $textfile << EOI
+
+##### MF35: COVARIANCES OF FISSION NEUTRON SPECTRUM
+
+The covariance data for fission neutron spectra are provided by 
+the TANES code[kon19]. The contents of MF35 are covariance data 
+between different outgoing energies of the neutron spectra.
+EOI
+    fi
+  fi
+  if [ $detail -eq 1 ]  ; then
+    cat >> $textfile << EOI
+
+##### MF40: COVARIANCES OF ISOMER PRODUCTION     
+
+For covariances of ground state and isomeric cross sections, the 
+same procedures as for MF33 are used.
+EOI
+  fi
+fi
+if [ $type == gpf ] ;  then
+  cat >> $textfile << EOI
+
+***** F I L E   C H E C K I N G   A N D   P R O C E S S I N G ****
+
+This file has been checked and processed by
+- the BNL checking codes CHECKR-8.24, FIZCON-8.19 and PSYCHE-8.11
+  [her08],
+- the preprocessing codes PREPRO-2023 [cul23] into a PENDF file,
+- the processing code NJOY-2016.78 [mac10] into a PENDF file and a
+  MCNP (ACE) library,
+EOI
+fi
+cat >> $textfile << EOI
+
+*********************** R E F E R E N C E S **********************
+
+[cul23] D.E. Cullen, PREPRO 2023 - ENDF/B Pre-processing codes,
+        Technical report IAEA-NDS-0241, IAEA (2023)
+[her08] M. Herman, ENDF Utility Codes Release 8.0, (2008)
+[kon23] A.J. Koning, S. Hilaire and S. Goriely,
+        TALYS: modeling of nuclear reactions,
+        European Journal of Physics A59 (6), 131 (2023).
+[kon19] A.J. Koning, D. Rochman, J.-Ch. Sublet, N. Dzysiuk,
+        M. Fleming, and S. van der Marck, TENDL: Complete nuclear 
+        data library for innovative nuclear science and 
+        technology, Nuclear Data Sheets 155, 1 (2019)
+[mac10] R.E. Macfarlane and A.C. Kahler, Methods for processing 
+        ENDF/B-VII with NJOY, Nuclear Data Sheets 111, 2739 (2010)
+
+************************* C O N T E N T S ************************
+
+EOI
+echo "MF1MAKER is done"
+#Copyright (C)  2026 A.J. Koning
