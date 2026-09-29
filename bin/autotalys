@@ -1,0 +1,3718 @@
+#!/bin/bash
+#
+#
+echo
+echo "       Autotalys-2.25 (Version September 28 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
+echo
+echo $0 $@
+echo
+#
+#      autotalys - Script to run programs of the TALYS nuclear data system"
+#
+################################################################################
+#
+#               STRUCTURE OF THE AUTOTALYS SCRIPT
+#
+# A Input and Initialization
+#   A.1 Output of all options
+#   A.2 Initialization (default values) of variables
+#   A.3 Read command line arguments
+#   A.4 Prevent unlogical option combinations
+#   A.5 Set nuclide symbols
+#   A.6 Set path names and executables
+#   A.7 Output of all flags and options
+#   A.8 Nuclide initialization
+#   A.9 Make path for target nuclide and create directories
+# B TALYS run
+#   B.1 Set incident energies
+#   B.2 Create standard TALYS input file
+#   B.3 Specific additions to the TALYS input file
+#   B.4 Copy TALYS input files and go to talyscalc directory
+#   B.5 Optional normalization to existing data, i.e. run TALYS again
+# C TEFAL: ENDF file creation
+#   C.1 Create TEFAL input files
+#   C.2 Resonance files
+#   C.3 nubar files
+#   C.4 PFNS files
+#   C.5 Further input for TEFAL
+#   C.6 Definition of specific libraries
+#   C.7 Loop over various types of libraries and run TEFAL and associated codes
+#   C.8 Run TEFAL and copy files
+#   C.9 Run CHECKR, FIZCON and PSYCHE
+#   C.10 For EAF: Run PREPRO for pointwise data
+#   C.11 Copy files with reaction information
+# D TASMAN: Covariance calculation or optimization
+#   D.1 Create TASMAN input file
+#   D.2 Create directory for covariance calculation or optimization
+#   D.3 Run TASMAN and copy results to talyscalc directory
+#   D.4 Run TEFAL for ENDF file with covariance information
+#   D.5 Run CHECKR, FIZCON and PSYCHE
+# E Checking, processing and plotting
+#   E.1 FUDGE
+#   E.2 NJOY for pendfN and ACE
+#   E.3 PREPRO and INTER
+#   E.4 MCNP
+#   E.5 Comparison and covariance plots with NJOY and ERRORJ
+#   E.6 Plotting of results versus EXFOR and other libraries
+# F Clean up
+################################################################################
+start=`date +%F,%T`
+echo "________Script [$0] starting on: `uname -n` at: $start"
+echo
+#
+################################################################################
+echo "### A Input and Initialization"
+################################################################################
+#
+################################################################################
+echo "  # A.1 Output of all options"
+################################################################################
+#
+if [ $# -eq 0 ] ; then
+  echo "AUTOTALYS                                                              AUTOTALYS"
+  echo
+  echo
+  echo
+  echo "NAME"
+  echo "       autotalys - Script to run programs of the TALYS nuclear data system and"
+  echo "                   to move all results into appropriate directories"
+  echo
+  echo "SYNOPSIS"
+  echo "       autotalys [option] [value]"
+  echo
+  echo "DESCRIPTION"
+  echo "       With Autotalys, various tasks of the TALYS system can be automated."
+  echo "       The tasks which can be performed are"
+  echo "         DATA LIBRARY PRODUCTION"
+  echo "         - Creation of an input file for TALYS"
+  echo "         - Run TALYS, with or without automatic normalization"
+  echo "         - Run TEFAL to produce an ENDF-6 data library"
+  echo "         - Run TASMAN to randomize inputs and random data libraries, covariance matrices, optimization to experimental data and sensitivity profiles"
+  echo "         - Depending on the version of this package ('T3' or 'T6'):"
+  echo "           - Read prepared databases:"
+  echo "             - resbase for produce resonance parameters + uncertainties"
+  echo "             - nubase for produce fission parameters + uncertainties"
+  echo "             - pfnsbase for produce fission neutron spectra + uncertainties"
+  echo "           - Run codes:"
+  echo "             - TARES to produce resonance parameters + uncertainties"
+  echo "             - TAFIS to produce fission parameters + uncertainties"
+  echo "             - TANES to produce fission neutron spectra + uncertainties"
+  echo "         - Run CHECKR, FIZCON, PSYCHE and INTER to check data libraries"
+  echo "         - Run PREPRO and FUDGE codes to check and process data libraries"
+  echo "         - Run NJOY to process data library"
+  echo "         - Store all x-y tables, ENDF-6 data libraries and other results in appropriate directories"
+  echo
+  echo "         SENSITIVITY ANALYSIS"
+  echo "         - With TASMAN, nuclear model parameter sensitivities can be calculated, by linearly"
+  echo "           changing the input parameters one by one, or by a Monte Carlo method."
+  echo
+  echo "         SEARCH (automatic optimization to experimental or evaluated data)"
+  echo
+  echo "       Consult the Autotalys manual in tools/doc/tools.pdf for a complete description"
+  echo
+  echo "   Operation mode:"
+  echo
+  echo "       Usage: autotalys [option] [value]"
+  echo
+  echo "       Some option flags should be accompanied by a value"
+  echo
+  echo "       Examples: autotalys -element Nb -mass 93"
+  echo "                 autotalys -element U -mass 235 -noendf -high"
+  echo
+  echo "   General options: projectile, nuclide (range) and energies"
+  echo
+  echo "       -proj [projectile] "
+  echo "             Projectile: n,g,p,d,t,h or a [default: -proj n]"
+  echo
+  echo "       -element [element]    "
+  echo "                Element [default: -element Nb]"
+  echo
+  echo "       -mass [mass]   "
+  echo "             Mass number [default: -mass 93]"
+  echo
+  echo "       -Ltarget [Ltarget] "
+  echo "                Level number of target [default: -Ltarget 0]"
+  echo
+  echo "       -Liso [Liso]"
+  echo "             Isomeric number of target [default: -Liso 0]"
+  echo
+  echo "       -high "
+  echo "             List of incident energies up to 200 MeV [default: -E30]"
+  echo
+  echo "       -low "
+  echo "            List of incident energies up to 20 MeV [default: -E30]"
+  echo
+  echo "       -E30         "
+  echo "            List of incident energies up to 30 MeV [default: -E30]"
+  echo
+  echo "       -E60         "
+  echo "            List of incident energies up to 60 MeV [default: -E30]"
+  echo
+  echo "       -E300        "
+  echo "            List of incident energies up to 300 MeV [default: -E30]"
+  echo
+  echo "       -E600        "
+  echo "            List of incident energies up to 600 MeV [default: -E30]"
+  echo
+  echo "       -E1000        "
+  echo "            List of incident energies up to 1000 MeV [default: -E30]"
+  echo
+  echo "       -thin "
+  echo "            Thin energy grid [default: -nothin]"
+  echo
+  echo "       -E [E value] "
+  echo "          Individual incident energy in MeV [default: not used]"
+  echo
+  echo "       -energyfile [full pathname] "
+  echo "                   File with incident energies [default: not used]"
+  echo
+  echo "       -fy "
+  echo "            Fission yield calculation [default: -nofy]"
+  echo
+  echo "   TALYS keywords and version"
+  echo
+  echo "       -bins [bins] "
+  echo "             Number of bins for TALYS calculation [default: -bins 40]"
+  echo
+  echo "       -talysversion [name]"
+  echo "                Specific TALYS executable in bin/ [default: -talysversion talys]"
+  echo
+  echo "       -talysfile [full pathname] "
+  echo "                   File with TALYS keywords [default: not used]"
+  echo
+  echo "       -talysdir [full pathname] "
+  echo "                   Directory with files for TALYS run [default: not used]"
+  echo
+  echo "       -[no]recoil"
+  echo "                   Include recoil information [default: -norecoil]"
+  echo
+  echo "       -[no]talysresonance"
+  echo "                   Include resonances in TALYS [default: -notalysresonance]"
+  echo
+  echo "       -[no]macs  "
+  echo "                   Calculate MACS [default: -nomacs]"
+  echo
+  echo "       -[no]levels "
+  echo "                  Calculate discrete level cross sections [default: -nolevels]"
+  echo
+  echo "       -[no]micro "
+  echo "                  Use microscopic TALYS options [default: -nomicro]"
+  echo
+  echo "       -[no]best             "
+  echo "                 Use best files if present [default: -nobest]"
+  echo
+  echo "       -[no]fit              "
+  echo "                 Use fitted parameters if present [default: -nofit]"
+  echo
+  echo "       -[no]tasmanbest             "
+  echo "                 Use best TASMAN files if present [default: -notasmanbest]"
+  echo
+  echo "       -[no]rescue "
+  echo "                   Use rescue files if present [default: -norescue]"
+  echo
+  echo "       -[no]autonorm "
+  echo "                   Automatically normalize data [default: -noautonorm]"
+  echo
+  echo "       -[no]pipefail "
+  echo "                   set -euo pipefail for extra checks [default: -nopipefail]"
+  echo
+  echo "       -[no]omponly               "
+  echo "                 Execute ONLY an optical model calculation [default: -noomponly]"
+  echo
+  echo "       -[no]subfission             "
+  echo "                 Include high energy fission for subactinides [default: -nosubfission]"
+  echo
+  echo "       -[no]ld                         "
+  echo "                 TALYS runs for level density only [default: -nold]"
+  echo
+  echo "       -ldmodel                    "
+  echo "                 Level density model [default: -ldmodel 0]"
+  echo
+  echo "       -psfmodel                    "
+  echo "                 Photon strength function model [default: -psfmodel 0]"
+  echo
+  echo "       -fismodel                    "
+  echo "                 Fission model [default: -fismodel 0]"
+  echo
+  echo "   Covariance or optimization calculation"
+  echo
+  echo "       -[no]covar "
+  echo "                  Total Monte Carlo and/or covariances [default: covar]"
+  echo
+  echo "       -binsrand [bins] "
+  echo "                 Number of bins for random TALYS runs [default: -binsrand 40]"
+  echo
+  echo "       -ntalys [runs] "
+  echo "               Number of random TALYS runs [default: -ntalys 10]"
+  echo
+  echo "       -nburn [runs] "
+  echo "               Number of burn-in runs [default: -nburn ntalys]"
+  echo
+  echo "       -[no]isomer "
+  echo "               Covaraince data for isomers [default: -noisomer]"
+  echo
+  echo "       -[no]residual "
+  echo "               Covariance data for residual cross sections [default: -residual]"
+  echo
+  echo "       -[no]intercor "
+  echo "               Covariance data between reaction channels [default: -intercor]"
+  echo
+  echo "       -seed [number] "
+  echo "             Seed for random number generator [default: mass number]"
+  echo
+  echo "       -offset [number] "
+  echo "               Offset for TALYS run counter [default: -offset 0]"
+  echo
+  echo "       -tasmanversion [name]"
+  echo "                Specific TASMAN executable in bin/ [default: -tasmanversion tasman]"
+  echo
+  echo "       -tasmanfile [full pathname] "
+  echo "                   File with TASMAN keywords [default: not used]"
+  echo
+  echo "       -[no]allrandom "
+  echo "                  Store random files for all ENDF options [default: -noallrandom]"
+  echo
+  echo "       -[no]allprocess "
+  echo "                  Process files for all ENDF options [default: -noallprocess]"
+  echo
+  echo "       -[no]weight "
+  echo "                  Use weighted random runs [default: -noweight]"
+  echo
+  echo "       -[no]ompvar "
+  echo "                   Vary optical model parameters [default: -ompvar]"
+  echo
+  echo "       -[no]parauto "
+  echo "                   Vary automatically many TALYS parameters [default: -parauto]"
+  echo
+  echo "       -[no]sens "
+  echo "                 No linear sensitivity analysis [default: -nosens]"
+  echo
+  echo "       -[no]ransens "
+  echo "                 Monte Carlo sensitivity analysis [default: -noransens]"
+  echo
+  echo "       -[no]morris "
+  echo "                 Morris screening for linear sensitivity analysis [default: -nomorris]"
+  echo
+  echo "       -[no]search "
+  echo "                   Perform automatic optimization [default: -nosearch]"
+  echo
+  echo "       -[no]autosearch "
+  echo "                   Automatically insert parameters to be searched [default: -autosearch]"
+  echo
+  echo "   Output: x-y tables, ENDF files and options"
+  echo
+  echo "       -[no]talys "
+  echo "                  TALYS and/or TASMAN run [default: -talys]"
+  echo
+  echo "       -tefalversion [name]"
+  echo "                Specific TEFAL executable in bin/ [default: -tefalversion tefal]"
+  echo
+  echo "       -tefalfile [full pathname] "
+  echo "                   File with TEFAL keywords [default: not used]"
+  echo
+  echo "       -libname   [name] "
+  echo "                   Name of library for ENDF MF1 [default: TENDL-2026]"
+  echo
+  echo "       -libext    [name] "
+  echo "                   Name of library extension  [default: tendl]"
+  echo
+  echo "       -[no]tables "
+  echo "                   Create x-y tables for results [default: -tables]"
+  echo
+  echo "       -[no]plot "
+  echo "                   Create plots with differential data [default: -plot]"
+  echo
+  echo "       -[no]Ealways "
+  echo "                   Always create plots also without experimental data [default: -noEalways]"
+  echo
+  echo "       -[no]endf  "
+  echo "                 Create ENDF-6 files [default: -endf]"
+  echo
+  echo "       -[no]gpf "
+  echo "                Create ENDF-6 General Purpose File (GPF) [default: -gpf]"
+  echo
+  echo "       -[no]sdefault "
+  echo "                GP file with MT5 switch at the default energy: "
+  echo "                30 MeV [sdefault: -sdefault]"
+  echo
+  echo "       -[no]s0 "
+  echo "                GP file with MT5 switch at 0 MeV [default: -nos0]"
+  echo
+  echo "       -[no]s20 "
+  echo "                GP file with MT5 switch at 20 MeV [default: -nos20]"
+  echo
+  echo "       -[no]s60 "
+  echo "                GP file with MT5 switch at 60 MeV [default: -nos60]"
+  echo
+  echo "       -[no]mt "
+  echo "                GP file without MT5 cut [default: -nomt]"
+  echo
+  echo "       -[no]mtextra "
+  echo "                    Use ENDF-6 MT numbers MT151-200 [default: -nomtextra]"
+  echo
+  echo "       -[no]resonance"
+  echo "                   Include resonances in the ENDF file [default: -resonance]"
+  echo
+  echo "       -[no]lrf7 "
+  echo "                    Use LRF7 (R-matrix limited format) for MF2 [default: -nolrf7]"
+  echo
+  echo "       -[no]select "
+  echo "                   Data files with selected random parts [default: -noselect]"
+  echo
+  echo "       -[no]covrand "
+  echo "                    Data files with updated covariances [default: -nocovrand] "
+  echo
+  echo "       -[no]nubar "
+  echo "                  Fission (nubar) values with TAFIS [default: -nubar]"
+  echo
+  echo "       -[no]nubarbase "
+  echo "                    Take nubar from database or online TAFIS calculation [default: -nubarbase]"
+  echo
+  echo "       -[no]fns "
+  echo "                Fission neutron spectrum with TANES [default: -fns]"
+  echo
+  echo "       -[no]fnsbase "
+  echo "                    Take FNS from database or online TANES calculation [default: -fnsbase]"
+  echo
+  echo "       -[no]acf "
+  echo "                No ENDF-6 activation file [default: -noacf]"
+  echo
+  echo "       -[no]eaf "
+  echo "                EAF activation file [default: -noeaf]"
+  echo
+  echo "       -[no]resbase "
+  echo "                    Take resonances from database or online TARES calculation [default: -resbase]"
+  echo
+  echo "       -[no]compact "
+  echo "                    Compact resonance covariance matrix [default: -compact]"
+  echo
+  echo "       -[no]talysurr "
+  echo "                    Adopt URR parameters from TALYS  [default: -notalysurr]"
+  echo
+  echo "       -[no]mf33res "
+  echo "                    Resonance covariances in MF33 [default: -nomf33res]"
+  echo
+  echo "       -[no]bnl "
+  echo "                  Check ENDF-6 file with BNL codes [default: -bnl]"
+  echo
+  echo "       -[no]prepro "
+  echo "                   Check ENDF-6 file with PREPRO system [default: -prepro]"
+  echo
+  echo "       -[no]fudge "
+  echo "                   Check ENDF-6 file with FUDGE system [default: -fudge]"
+  echo
+  echo "       -[no]njoy "
+  echo "                 Produce ACE file with NJOY [default: -njoy]"
+  echo
+  echo "       -[no]purr "
+  echo "                 Use PURR in NJOY [default: -nopurr]"
+  echo
+  echo "       -[no]mcnp "
+  echo "                 Run MCNP with ACE file [default: -nomcnp]"
+  echo
+  echo "       -[no]integral "
+  echo "                 Calculation of integral effective cross section [default: -nointegral]"
+  echo
+  echo
+  echo "   System options"
+  echo
+  echo "       -[no]gzip "
+  echo "                 Gzip working directory [default: -nogzip]"
+  echo
+  echo "       -[no]tar "
+  echo "                 Tar final directory [default: -notar]"
+  echo
+  echo "       -[no]tarwork "
+  echo "                 Tar work directory [default: -notarwork]"
+  echo
+  echo "       -[no]clean "
+  echo "                  Clean up working directories [default: -noclean]"
+  echo
+  echo "       -copydir [name] "
+  echo "                  Directory to which results are copied [default: not used]"
+  echo
+  echo "       -movedir [name] "
+  echo "                  Directory to which results are moved [default: not used]"
+  echo
+  echo "       -extension [extension] "
+  echo "                  Use an extension (e.g. C, 77) for TALYS, TEFAL"
+  echo "                  and TASMAN executables [default: blank]"
+  echo
+  echo "       -bestlib [bestlib] "
+  echo "                  Name of the best library used by TALYS [default: best]"
+  echo
+  echo "       Extra options can be given to TALYS, TEFAL and TASMAN by providing"
+  echo "       the -talysfile, -tefalfile and -tasmanfile flags, respectively,"
+  echo
+  echo "       Consult the Autotalys manual tools/doc/tools.pdf for several sample cases"
+  echo
+  echo "REQUIRED"
+  echo "       Codes and scripts needed to run Autotalys:"
+  echo
+  echo "       TALYS     : nuclear reaction program"
+  echo "       TASMAN    : TALYS input randomizer, optimization and covariance program"
+  echo "       TEFAL     : ENDF-6 formatting program"
+  echo "       TARES     : program for ENDF-6 resonance and covariance data"
+  echo "       TAFIS     : program for ENDF-6 fission (nubar) parameters and covariances"
+  echo "       TANES     : program for ENDF-6 fission neutron spectrum and covariances"
+  echo "       autonorm  : program to normalize TALYS results to evaluated or experimental data"
+  echo "       autobnl   : script to run the checking codes CHECKR, FIZCON, PSYCHE and INTER"
+  echo "       CHECKR    : BNL code to check ENDF-6 formats"
+  echo "       FIZCON    : BNL code to check procedures in ENDF-6 data libraries"
+  echo "       PSYCHE    : BNL code to perform physics checks of ENDF-6 data libraries"
+  echo "       autoprepro: script to run the PREPRO codes"
+  echo "       PREPRO    : Lawrence Livermore pre-processing codes LINEAR, FIXUP, etc."
+  echo "       FUDGE     : Lawrence Livermore GNDS formatting and checking code system"
+  echo "       autonjoy  : script to run NJOY"
+  echo "       NJOY      : Los Alamos processing program"
+  echo "       autofudge : script to run the FUDGE codes"
+  echo "       automcnp  : script to run MCNP"
+  echo "       MCNP      : Los Alamos Monte Carlo transport program (not implemented)"
+  echo
+  echo "       The above requirement list depends of course on the particular use of Autotalys,"
+  echo "       e.g. whether ENDF-6 data library production, checking and processing is included or not"
+  echo
+  echo "AUTHOR"
+  echo "       Autotalys was written by Arjan Koning."
+  exit 0
+fi
+#
+################################################################################
+echo "  # A.2 Initialization (default values) of variables"
+################################################################################
+#
+proj=n
+element=Nb
+mass=93
+Ltarget=0
+Liso=0
+bins=40
+binsrand=0
+ntalys=-1
+nburn=-1
+high=0
+low=0
+E30=1
+E60=0
+E300=0
+E600=0
+thin=0
+fy=0
+E1000=0
+E=
+talysversion=talys
+tefalversion=tefal
+tasmanversion=tasman
+energyfile=xxx
+tasmanfile=xxx
+talysfile=xxx
+talysdir=xxx
+tefalfile=xxx
+copydir=xxx
+movedir=xxx
+libname=TENDL-2026
+libext=tendl
+runtalys=1
+tables=1
+plot=1
+Ealways=0
+endf=1
+gpf=1
+sdefault=1
+s0=0
+s20=0
+s60=0
+mt=0
+mtextra=0
+lrf7=0
+select=0
+covrand=0
+nubar=1
+fns=1
+acf=0
+eaf=0
+covar=0
+sens=0
+ransens=0
+morris=0
+allrandom=0
+allprocess=0
+weight=0
+ompvar=1
+parauto=1
+isomer=0
+residual=1
+intercor=1
+search=0
+autosearch=1
+gzip=0
+tar=0
+tarwork=0
+bnl=1
+prepro=1
+fudge=1
+njoy=1
+purr=0
+mcnp=0
+integral=0
+clean=0
+extension=
+nubarbase=1
+fnsbase=1
+resbase=1
+compact=1
+talysurr=0
+mf33res=0
+recoil=0
+talysresonance=0
+resonance=1
+macs=0
+levels=0
+rescue=0
+auto=0
+omponly=0
+subfission=0
+ld=0
+ldmodel=0
+psfmodel=0
+fismodel=0
+micro=0
+best=0
+fit=0
+tasmanbest=0
+bestlib=best
+seed=0
+offset=0
+pipefail=0
+#
+# Functions 
+#
+cpalways () {
+  local pattern="$1"
+  local dest="$2"
+
+  for i in $pattern ; do
+    if [ -e "$i" ] ; then
+      cp -f -- "$i" "$dest"
+    fi
+  done
+}
+die() {
+  echo "*** AUTOTALYS error: $*" >&2
+  exit 1
+}
+usage_error() {
+  echo "*** AUTOTALYS error: $*" >&2
+  exit 2
+}
+require_exe() {
+  [ -x "$1" ] || die "executable not found: $1"
+}
+
+cd_or_die() {
+  cd "$1" || die "cannot enter directory: $1"
+}
+need_value() {
+  if [ $# -lt 2 ]; then
+    usage_error "option $1 requires a value"
+  fi
+}
+#
+################################################################################
+echo "  # A.3 Read command line arguments"
+################################################################################
+#
+while [ $# -ge 1 ] ; do
+  case $1 in
+    -proj) need_value "$@"; proj=$2;shift 2;;
+    -element) need_value "$@"; element=$2;shift 2;;
+    -mass) need_value "$@"; mass=$2;shift 2;;
+    -Ltarget) need_value "$@"; Ltarget=$2;shift 2;;
+    -Liso) need_value "$@"; Liso=$2;shift 2;;
+    -bins) need_value "$@"; bins=$2;shift 2;;
+    -binsrand) need_value "$@"; binsrand=$2;shift 2;;
+    -ntalys) need_value "$@"; ntalys=$2;shift 2;;
+    -ldmodel) need_value "$@"; ldmodel=$2;shift 2;;
+    -psfmodel) need_value "$@"; psfmodel=$2;shift 2;;
+    -fismodel) need_value "$@"; fismodel=$2;shift 2;;
+    -nburn) need_value "$@"; nburn=$2;shift 2;;
+    -talysversion) need_value "$@"; talysversion=$2;shift 2;;
+    -tefalversion) need_value "$@"; tefalversion=$2;shift 2;;
+    -tasmanversion) need_value "$@"; tasmanversion=$2;shift 2;;
+    -energyfile) need_value "$@"; energyfile=$2;shift 2;;
+    -tasmanfile) need_value "$@"; tasmanfile=$2;shift 2;;
+    -talysfile) need_value "$@"; talysfile=$2;shift 2;;
+    -tefalfile) need_value "$@"; tefalfile=$2;shift 2;;
+    -talysdir) need_value "$@"; talysdir=$2;shift 2;;
+    -copydir) need_value "$@"; copydir=$2;shift 2;;
+    -movedir) need_value "$@"; movedir=$2;shift 2;;
+    -libname) need_value "$@"; libname=$2;shift 2;;
+    -libext) need_value "$@"; libext=$2;shift 2;;
+    -low)   low=1; high=0; E30=0; E60=0; E300=0; E600=0; E1000=0; shift;;
+    -E30)   low=0; high=0; E30=1; E60=0; E300=0; E600=0; E1000=0; shift;;
+    -E60)   low=0; high=0; E30=0; E60=1; E300=0; E600=0; E1000=0; shift;;
+    -high)  low=0; high=1; E30=0; E60=0; E300=0; E600=0; E1000=0; shift;;
+    -E300)  low=0; high=0; E30=0; E60=0; E300=1; E600=0; E1000=0; shift;;
+    -E600)  low=0; high=0; E30=0; E60=0; E300=0; E600=1; E1000=0; shift;;
+    -E1000) low=0; high=0; E30=0; E60=0; E300=0; E600=0; E1000=1; shift;;
+    -thin)  thin=1;shift;;
+    -nothin)  thin=0;shift;;
+    -E) need_value "$@"; E=$2;shift 2;;
+    -fy)  fy=1;shift;;
+    -nofy)  fy=0;shift;;
+    -runtalys)  runtalys=1;shift;;
+    -noruntalys)  runtalys=0;shift;;
+    -tables)  tables=1;shift;;
+    -notables)  tables=0;shift;;
+    -plot)  plot=1;shift;;
+    -noplot)  plot=0;shift;;
+    -Ealways)  Ealways=1;shift;;
+    -noEalways)  Ealways=0;shift;;
+    -endf)  endf=1;shift;;
+    -noendf)  endf=0;shift;;
+    -gpf)  gpf=1;shift;;
+    -nogpf)  gpf=0;shift;;
+    -sdefault)  sdefault=1;shift;;
+    -nosdefault)  sdefault=0;shift;;
+    -s0)  s0=1;shift;;
+    -nos0)  s0=0;shift;;
+    -s20)  s20=1;shift;;
+    -nos20)  s20=0;shift;;
+    -s60)  s60=1;shift;;
+    -nos60)  s60=0;shift;;
+    -mt)  mt=1;shift;;
+    -nomt)  mt=0;shift;;
+    -mtextra)  mtextra=1;shift;;
+    -nomtextra)  mtextra=0;shift;;
+    -lrf7)  lrf7=1;shift;;
+    -nolrf7)  lrf7=0;shift;;
+    -select)  select=1;shift;;
+    -noselect)  select=0;shift;;
+    -covrand)  covrand=1;shift;;
+    -nocovrand)  covrand=0;shift;;
+    -nubar)  nubar=1;shift;;
+    -nonubar)  nubar=0;shift;;
+    -fns)  fns=1;shift;;
+    -nofns)  fns=0;shift;;
+    -acf)  acf=1;shift;;
+    -noacf)  acf=0;shift;;
+    -eaf)  eaf=1;shift;;
+    -noeaf)  eaf=0;shift;;
+    -covar)  covar=1;shift;;
+    -nocovar)  covar=0;shift;;
+    -sens)  sens=1;shift;;
+    -nosens)  sens=0;shift;;
+    -ransens)  ransens=1;shift;;
+    -noransens)  ransens=0;shift;;
+    -morris)  morris=1;shift;;
+    -nomorris)  morris=0;shift;;
+    -allrandom)  allrandom=1;shift;;
+    -noallrandom)  allrandom=0;shift;;
+    -allprocess)  allprocess=1;shift;;
+    -noallprocess)  allprocess=0;shift;;
+    -weight)  weight=1;shift;;
+    -noweight)  weight=0;shift;;
+    -ompvar)  ompvar=1;shift;;
+    -noompvar)  ompvar=0;shift;;
+    -parauto)  parauto=1;shift;;
+    -noparauto)  parauto=0;shift;;
+    -isomer)  isomer=1;shift;;
+    -noisomer)  isomer=0;shift;;
+    -residual)  residual=1;shift;;
+    -noresidual)  residual=0;shift;;
+    -intercor)  intercor=1;shift;;
+    -nointercor)  intercor=0;shift;;
+    -search)  search=1;shift;;
+    -nosearch)  search=0;shift;;
+    -autosearch)  autosearch=1;shift;;
+    -noautosearch)  autosearch=0;shift;;
+    -gzip)  gzip=1;shift;;
+    -nogzip)  gzip=0;shift;;
+    -tar)  tar=1;shift;;
+    -notar)  tar=0;shift;;
+    -tarwork)  tarwork=1;shift;;
+    -notarwork)  tarwork=0;shift;;
+    -bnl)  bnl=1;shift;;
+    -nobnl)  bnl=0;shift;;
+    -prepro)  prepro=1;shift;;
+    -noprepro)  prepro=0;shift;;
+    -fudge)  fudge=1;shift;;
+    -nofudge)  fudge=0;shift;;
+    -njoy)  njoy=1;shift;;
+    -nonjoy)  njoy=0;shift;;
+    -purr)  purr=1;shift;;
+    -nopurr)  purr=0;shift;;
+    -mcnp)  mcnp=1;shift;;
+    -nomcnp)  mcnp=0;shift;;
+    -integral)  integral=1;shift;;
+    -nointegral)  integral=0;shift;;
+    -clean)  clean=1;shift;;
+    -noclean)  clean=0;shift;;
+    -extension) need_value "$@"; extension=$2;shift 2;;
+    -nubarbase)  nubarbase=1;shift;;
+    -nonubarbase)  nubarbase=0;shift;;
+    -fnsbase)  fnsbase=1;shift;;
+    -nofnsbase)  fnsbase=0;shift;;
+    -resbase)  resbase=1;shift;;
+    -noresbase)  resbase=0;shift;;
+    -compact)  compact=1;shift;;
+    -nocompact)  compact=0;shift;;
+    -talysurr)  talysurr=1;shift;;
+    -notalysurr)  talysurr=0;shift;;
+    -mf33res)  mf33res=1;shift;;
+    -nomf33res)  mf33res=0;shift;;
+    -recoil)  recoil=1;shift;;
+    -norecoil)  recoil=0;shift;;
+    -talysresonance)  talysresonance=1;shift;;
+    -notalysresonance)  talysresonance=0;shift;;
+    -resonance)  resonance=1;shift;;
+    -noresonance)  resonance=0;shift;;
+    -macs)  macs=1;shift;;
+    -nomacs)  macs=0;shift;;
+    -levels)  levels=1;shift;;
+    -nolevels)  levels=0;shift;;
+    -micro)  micro=1;shift;;
+    -nomicro)  micro=0;shift;;
+    -best)  best=1;shift;;
+    -nobest)  best=0;shift;;
+    -fit)  fit=1;shift;;
+    -nofit)  fit=0;shift;;
+    -tasmanbest)  tasmanbest=1;shift;;
+    -notasmanbest)  tasmanbest=0;shift;;
+    -bestlib) need_value "$@"; bestlib=$2;shift 2;;
+    -rescue)  rescue=1;shift;;
+    -norescue)  rescue=0;shift;;
+    -autonorm)  auto=1;shift;;
+    -noautonorm)  auto=0;shift;;
+    -pipefail)  pipefail=1;shift;;
+    -nopipefail)  pipefail=0;shift;;
+    -omponly)  omponly=1;shift;;
+    -noomponly)  omponly=0;shift;;
+    -subfission)  subfission=1;shift;;
+    -nosubfission)  subfission=0;shift;;
+    -ld)  ld=1;shift;;
+    -nold)  ld=0;shift;;
+    -seed) need_value "$@"; seed=$2;shift 2;;
+    -offset) need_value "$@"; offset=$2;shift 2;;
+    *) usage_error "invalid option [$1]" ;;
+  esac
+done
+#
+################################################################################
+echo "  # A.4 Prevent unlogical option combinations"
+################################################################################
+#
+if [ $pipefail -eq 1 ] ;then
+  set -euo pipefail
+fi
+case "$proj" in
+  n|g|p|d|t|h|a) ;;
+  *)
+    usage_error "invalid projectile: $proj"
+    ;;
+esac
+
+if ! [[ "$element" =~ ^[A-Za-z]{1,2}$ ]]; then
+  usage_error "invalid element: $element"
+fi
+
+if ! [[ "$mass" =~ ^[0-9]+$ ]] || [ "$mass" -lt 1 ]; then
+  usage_error "invalid mass: $mass"
+fi
+
+if ! [[ "$Liso" =~ ^[0-4]+$ ]]; then
+  usage_error "invalid liso: $Liso"
+fi
+if [ $search -eq 1 ] ; then
+  endf=0
+  covar=0
+  tables=0
+  plot=0
+  rescue=0
+  auto=0
+  clean=0
+  sens=0
+fi
+if [ $omponly -eq 1 ] ; then
+  residual=0
+  endf=0
+  levels=0
+fi
+if [ $macs -eq 1 ] ; then
+  endf=0
+fi
+if [ $ld -eq 1 ] ; then
+  autosearch=0
+  endf=0
+  best=0
+  fit=0
+  tasmanbest=0
+fi
+if [ $ransens -eq 1 ] ; then
+  covar=1
+fi
+if [ $covar -eq 0 ] && [ $search -eq 0 ] ; then
+  ntalys=0
+fi
+if [ $rescue -eq 1 ] ; then
+  auto=0
+fi
+if [ $sens -eq 1 ] ; then
+  endf=0
+  tables=0
+  plot=0
+  covar=0
+  search=0
+  rescue=0
+  auto=0
+  best=0
+  fit=0
+  tasmanbest=0
+fi
+if [ $endf -eq 0 ] ; then
+  gpf=0
+  mt=0
+  select=0
+  covrand=0
+  nubar=0
+  fns=0
+  s0=0
+  s20=0
+  s60=0
+  acf=0
+  eaf=0
+  bnl=0
+  prepro=0
+  fudge=0
+  mcnp=0
+  njoy=0
+  purr=0
+fi
+if [ $njoy -eq 0 ] ; then
+  mcnp=0
+fi
+if [ $runtalys -eq 0 ] ; then
+  auto=0
+fi
+if [ $binsrand -eq 0 ] ; then
+  binsrand=$bins
+fi
+#
+################################################################################
+echo "  # A.5 Set nuclide symbols"
+################################################################################
+#
+# Remove and add leading zeroes for mass
+#
+mass=`printf "%03d"  $(echo $mass | sed "s/^0*//;s/^$/0/")`
+#
+# Produce correct string for element: only first character uppercase
+#
+element=`echo $element | tr A-Z a-z | awk '{print toupper(substr($0,1,1))substr($0,2)}'`
+#
+# Isomeric symbol
+#
+isosym=
+Liso=`printf "%01d"  $(echo $Liso)`
+case $Liso in
+  1)  isosym='m';;
+  2)  isosym='n';;
+  3)  isosym='o';;
+  4)  isosym='p';;
+esac
+nuclide=$element$mass$isosym
+projnuc=$proj'-'$nuclide
+#
+################################################################################
+echo "  # A.6 Set path names and executables"
+echo
+################################################################################
+#
+###
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+AUTOTALYS_HOME="$(cd "$script_dir/.." && pwd)"
+export AUTOTALYS_HOME
+export TALYS_DIR="$AUTOTALYS_HOME/talys"
+export TEFAL_DIR="$AUTOTALYS_HOME/tefal"
+export TASMAN_DIR="$AUTOTALYS_HOME/tasman"
+export AUTOENDF_DIR="$AUTOTALYS_HOME/autoendf"
+export AUTOTALYS_TOOLS_DIR="$AUTOTALYS_HOME/autotalys_tools"
+export PATH="$AUTOTALYS_HOME/bin:$PATH"
+echo "The following are local settings for this autotalys run only"
+echo
+echo "AUTOTALYS_HOME " $AUTOTALYS_HOME
+echo "TALYS_DIR " $TALYS_DIR
+echo "TEFAL_DIR " $TEFAL_DIR
+echo "TASMAN_DIR " $TASMAN_DIR
+echo "AUTOENDF_DIR " $AUTOENDF_DIR
+echo "AUTOTALYS_TOOLS_DIR " $AUTOTALYS_TOOLS_DIR
+echo "PATH " $PATH
+echo
+###
+#Thome="${AUTOTALYS_HOME:-$HOME}"
+#Thome="${AUTOTALYS_HOME}"
+#Thome="${Thome%/}"     # remove final slash if present
+bin=${AUTOTALYS_HOME}'/bin/'
+talys=$bin$talysversion$extension
+tefal=$bin$tefalversion$extension
+tasman=$bin$tasmanversion$extension
+tares=$bin'tares'
+tafis=$bin'tafis'
+tanes=$bin'tanes'
+autonorm=$bin'autonorm'
+autobnl=$bin'autobnl'
+autoprepro=$bin'autoprepro'
+autonjoy=$bin'autonjoy'
+autofudge=$bin'autofudge'
+automcnp=$bin'automcnp'
+mf1maker=$bin'mf1maker'
+endftables=$bin'endftables'
+plotall=$bin'plotall'
+njoybin='xnjoy'
+run_errorj=$bin'run-errorj'
+interCE=$bin'interCE'
+energypath=${AUTOTALYS_HOME}'/tefal/misc/'
+taresdef=${AUTOTALYS_HOME}'/tefal/misc/background'
+librariespath=${HOME}'/libraries/'
+resonancepath=$librariespath'resbase/'
+nubarpath=$librariespath'nubarbase/'
+fnspath=$librariespath'fnsbase/'
+structure=${AUTOTALYS_HOME}'/talys/structure/'
+#
+# We run Autotalys in the current directory.
+#
+startdir=`pwd`
+curdir=`pwd`
+talyscalc=
+cov=
+sen=
+sea=
+#
+################################################################################
+echo "  # A.7 Output of all flags and options"
+################################################################################
+#
+echo
+echo "Projectile:                                      -proj " $proj
+echo "Element:                                      -element " $element
+echo "Mass:                                            -mass " $mass
+echo "Level of target:                              -Ltarget " $Ltarget
+echo "Isomer number of target:                         -Liso " $Liso
+echo "Thin energy grid up to 20:               -thin/-nothin " $thin
+echo "Energies up to 20 MeV:                            -low " $low
+echo "Energies up to 30 MeV:                            -E30 " $E30
+echo "Energies up to 60 MeV:                            -E60 " $E60
+echo "Energies up to 200 MeV:                          -high " $high
+echo "Energies up to 300 MeV:                          -E300 " $E300
+echo "Energies up to 600 MeV:                          -E600 " $E600
+echo "Energies up to 1000 MeV:                        -E1000 " $E1000
+echo "Number of bins:                                  -bins " $bins
+echo "Microscopic TALYS:                     -micro/-nomicro " $micro
+echo "Recoils:                             -recoil/-norecoil " $recoil
+echo "Resonances in TALYS: -talysresonance/-notalysresonance " $talysresonance
+echo "MACS:                                    -macs/-nomacs " $macs
+echo "Discrete level calculation:                    -levels " $levels
+echo "Level density model:                          -ldmodel " $ldmodel
+echo "Photon strength function model:              -psfmodel " $psfmodel
+echo "Fission model:                               -fismodel " $fismodel
+echo "Only optical model:                -omponly/-noomponly " $omponly
+echo "Fission yield calculation:                   -fy/-nofy " $fy
+echo "Best parameters:                         -best/-nobest " $best
+echo "Fitted parameters:                         -fit/-nofit " $fit
+echo "Best TASMAN parameters:      -tasmanbest/-notasmanbest " $tasmanbest
+echo "Adopt rescue files:                  -rescue/-norescue " $rescue
+echo "Automatic normalization:         -autonorm/-noautonorm " $auto
+echo "Name of energy file:                       -energyfile " $energyfile
+echo "Name of TASMAN keyword file:               -tasmanfile " $tasmanfile
+echo "Name of TALYS  keyword file:                -talysfile " $talysfile
+echo "Name of TEFAL  keyword file:                -tefalfile " $tefalfile
+echo "Name of directory with TALYS files:          -talysdir " $talysdir
+echo "Name of library for MF1:                      -libname " $libname
+echo "Name of library extension:                     -libext " $libext
+echo "Tables with results:                 -tables/-notables " $tables
+echo "Plots with differential data:            -plot/-noplot " $plot
+echo "Plot also without exp. data:       -Ealways/-noEalways " $Ealways
+echo "ENDF file:                               -endf/-noendf " $endf
+echo "  Run TALYS:                     -runtalys/-noruntalys " $runtalys
+echo "  ENDF general purpose file:               -gpf/-nogpf " $gpf
+echo "  Default ENDF file:             -sdefault/-nosdefault " $sdefault
+echo "  ENDF file with 0 MeV cut:                  -s0/-nos0 " $s0
+echo "  ENDF file with 20 MeV cut:               -s20/-nos20 " $s20
+echo "  ENDF file with 60 MeV cut:               -s60/-nos60 " $s60
+echo "  ENDF file with no cut:                     -mt/-nomt " $mt
+echo "  ENDF activation file:                    -acf/-noacf " $acf
+echo "  EAF activation file:                     -eaf/-noeaf " $eaf
+echo "  High-energy MT numbers:          -mtextra/-nomtextra " $mtextra
+echo "  Resonances in ENDF file:     -resonance/-noresonance " $resonance
+echo "  LRF7 for R-matrix limited formalism:   -lrf7/-nolrf7 " $lrf7
+echo "  nubar values:                        -nubar/-nonubar " $nubar
+echo "  Fission neutron spectra:                 -fns/-nofns " $fns
+echo "  Resonance database:              -resbase/-noresbase " $resbase
+echo "  Nubar database:              -nubarbase/-nonubarbase " $nubarbase
+echo "  FNS database:                    -fnsbase/-nofnsbase " $fnsbase
+echo "  URR parameters from TALYS:     -talysurr/-notalysurr " $talysurr
+echo "  Covariance file:                     -covar/-nocovar " $covar
+echo "    Number of bins (random):                 -binsrand " $binsrand
+echo "    Number of TALYS runs:                      -ntalys " $ntalys
+echo "    Number of burn-in runs:                     -nburn " $nburn
+echo "    Compact covariance matrix:     -compact/-nocompact " $compact
+echo "    Resonance covariance in MF33:  -mf33res/-nomf33res " $mf33res
+echo "    Covariance data for isomers:     -isomer/-noisomer " $isomer
+echo "    Covariance data for res. cs: -residual/-noresidual " $residual
+echo "    Selected random files:           -select/-noselect " $select
+echo "    Updated covariance file:       -covrand/-nocovrand " $covrand
+echo "    Offset for random counter:                 -offset " $offset
+echo "  Run BNL checking codes:                  -bnl/-nobnl " $bnl
+echo "  Run PREPRO:                        -prepro/-noprepro " $prepro
+echo "  Run FUDGE:                           -fudge/-nofudge " $fudge
+echo "  Run NJOY:                              -njoy/-nonjoy " $njoy
+echo "  Use PURR:                              -purr/-nopurr " $purr
+echo "  Run MCNP:                              -mcnp/-nomcnp " $mcnp
+echo "  Random files for all ENDF:   -allrandom/-noallrandom " $allrandom
+echo "  Process files for all ENDF:-allprocess/-noallprocess " $allprocess
+echo "Weighted random runs:                -weight/-noweight " $weight
+echo "Vary optical model:                  -ompvar/-noompvar " $ompvar
+echo "Seed for random number generator:                -seed " $seed
+echo "Vary many TALYS parameters:        -parauto/-noparauto " $parauto
+echo "Linear sensitivity:                      -sens/-nosens " $sens
+echo "Monte Carlo sensitivity:           -ransens/-noransens " $ransens
+echo "Morris screening for sensitivity     -morris/-nomorris " $morris
+echo "Automatic optimization:              -search/-nosearch " $search
+echo "Automatic search parameters: -autosearch/-noautosearch " $autosearch
+echo "TALYS version:                           -talysversion " $talysversion
+echo "TEFAL version:                           -tefalversion " $tefalversion
+echo "TASMAN version:                         -tasmanversion " $tasmanversion
+echo "Code name extension:                        -extension " $extension
+echo "Best library:                                 -bestlib " $bestlib
+echo "Integral effective cross s.:     -integral/-nointegral " $integral
+echo "Gzipped results:                         -gzip/-nogzip " $gzip
+echo "Tar final directory:                       -tar/-notar " $tar
+echo "Clean up working dirs:                 -clean/-noclean " $clean
+echo "Directory to copy results:                    -copydir " $copydir
+echo "Directory to move results:                    -movedir " $movedir
+echo
+#
+################################################################################
+echo "  # A.8 Nuclide initialization"
+################################################################################
+#
+if [ $ntalys -eq -1 ] ; then
+  ntalys=10
+fi
+energyfile0=$energyfile
+cd_or_die $startdir
+#
+# For ENDF nuclear data libraries, for each nuclide the following is done:
+#
+# - Create directories
+# - Create input files
+# - Run TALYS once or twice (in case of normalization)
+# - Run TEFAL for general purpose and/or activation files
+# - Check data library with BNL and PREPRO checking codes
+# - Run TASMAN if uncertainty calculation is required
+# - Run TEFAL for general purpose and/or activation files including covariance data
+# - Check data library with BNL, PREPRO, FUDGE checking codes
+# - Process with NJOY, ERRORJ and CALENDF (optional)
+#
+ACN=`expr $mass + 1`
+#
+# Determine if this nuclide is fissionable
+#
+fission=0
+for i in Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og B9 C0 C1 C2 C3 C4 ; do
+  if [ $element == $i ] && [ $mass -gt 215 ] ; then
+    fission=1
+  fi
+done
+#
+# Force disabling of high-energy subactinide fission for too light nuclides
+#
+if [ $mass -lt 180 ] || [ $mass -gt 215 ] ; then
+  subfission=0
+else
+  nubar=0
+  fns=0
+fi
+if [ $high -eq 0 ] && [ $E60 -eq 0 ] && [ $E300 -eq 0 ] && [ $E600 -eq 0 ] && [ $E1000 -eq 0 ] ; then
+  subfission=0
+fi
+#
+################################################################################
+echo "  # A.9 Make path for target nuclide and create directories"
+################################################################################
+#
+echo "*** Create subdirectories and TALYS input files"
+bestdir=$structure${bestlib}'/'$nuclide'/'
+nucpath=$startdir'/'$nuclide'/'
+rm -f "${nucpath}"/no*
+#
+# Create directory for target nuclide
+#
+if [ -d $nucpath ] && [ $runtalys -eq 1 ] ; then
+  rm -rf $nucpath
+fi
+mkdir -p $nucpath
+curdir=$nucpath
+cd_or_die $nucpath
+#
+# Create directory to store input information
+#
+inppath=$nucpath'input/'
+mkdir -p $inppath
+#
+# Create directories to store reaction information
+#
+if [ $tables -eq 1 ] ; then
+  tablespath=$nucpath'tables/'
+  mkdir -p $tablespath
+  parpath=$tablespath'parameters/'
+  mkdir -p $parpath
+  if [ $covar -eq 1 ] ; then
+    ranpath=$tablespath'random/'
+    mkdir -p $ranpath
+  fi
+  intpath=$tablespath'integral/'
+  mkdir -p $intpath
+  xspath=$tablespath'xs/'
+  mkdir -p $xspath
+  respath=$tablespath'residual/'
+  mkdir -p $respath
+  specpath=$tablespath'spectra/'
+  mkdir -p $specpath
+  angpath=$tablespath'angle/'
+  mkdir -p $angpath
+  if [ $proj == n ] ; then
+    gampath=$tablespath'gamma/'
+    mkdir -p $gampath
+  fi
+  if [ $fy -eq 1 ] ; then
+    fypath=$tablespath'fy/'
+    mkdir -p $fypath
+  fi
+fi
+#
+# Create directories to store plots
+#
+if [ $plot -eq 1 ] ; then
+  plotpath=$nucpath'plots/'
+  mkdir -p $plotpath
+fi
+#
+# Create directory to perform TALYS calculation
+#
+if [ $runtalys -eq 1 ] ; then
+  talyscalc=$curdir'/talyscalc/'
+  if [ -d $talyscalc ] ; then
+    rm -rf $talyscalc
+  fi
+  mkdir -p $talyscalc
+fi
+#
+################################################################################
+echo "### B TALYS run"
+################################################################################
+#
+################################################################################
+echo "  # B.1 Set incident energies"
+################################################################################
+#
+# Use energyfile for single energy or multiple energies if present, otherwise create it
+#
+if [ -n "$E" ] ; then
+  energyfile=energies
+  cat > $energyfile << EOI
+$E
+EOI
+else
+  if [ $energyfile0 == xxx ] ; then
+    energyfile=energies
+    if [ $proj == n ] ; then
+      type=n
+    else
+      if [ $proj == g ] ; then
+        type=g
+      else
+        type=p
+      fi
+    fi
+    if [ $eaf -eq 1 ] && [ $acf -eq 0 ] && [ $gpf -eq 0 ] ; then
+      type=eaf
+    fi
+    Efile=$energypath$type
+    if [ $high -eq 0 ] ; then
+      Efile=$energypath$type'20'
+    fi
+    if [ $E30 -eq 1 ] ; then
+      Efile=$energypath$type'30'
+    fi
+    if [ $E60 -eq 1 ] ; then
+      Efile=$energypath$type'60'
+    fi
+    if [ $E300 -eq 1 ] ; then
+      Efile=$energypath$type'300'
+    fi
+    if [ $E600 -eq 1 ] ; then
+      Efile=$energypath$type'600'
+    fi
+    if [ $E1000 -eq 1 ] ; then
+      Efile=$energypath$type'1000'
+    fi
+    if [ $proj == n ] && [ $thin -eq 1 ] ; then
+      Efile=$Efile'thin'
+    fi
+    Efile=$Efile'.grid'
+    cp -f $Efile $energyfile
+    if [ $proj == n ] && [ -e ${bestdir}$projnuc'.e' ] && [ $best -eq 1 ] && [ $thin -eq 0 ] ; then
+      cp -f ${bestdir}$projnuc'.e'  $energyfile
+      if [ $high -eq 1 ] ; then
+        cat $energypath'high.grid' >> $energyfile
+      fi
+      if [ $E30 -eq 1 ] ; then
+        cat $energypath'30.grid' >> $energyfile
+      fi
+      if [ $E60 -eq 1 ] ; then
+        cat $energypath'60.grid' >> $energyfile
+      fi
+      if [ $E300 -eq 1 ] ; then
+        cat $energypath'300.grid' >> $energyfile
+      fi
+      if [ $E600 -eq 1 ] ; then
+        cat $energypath'600.grid' >> $energyfile
+      fi
+      if [ $E1000 -eq 1 ] ; then
+        cat $energypath'1000.grid' >> $energyfile
+      fi
+    fi
+  fi
+fi
+#
+# Special action for finer energy grid for total, elastic c.s. calculations
+#
+if [ -e energies.omp ] ; then
+  rm -f energies.omp
+fi
+if [ -e ${bestdir}$projnuc'.eomp' ] && [ $best -eq 1 ] && [ $proj == n ] && [ $thin -eq 0 ] ; then
+  cp -f ${bestdir}$projnuc'.eomp' energies.omp
+  if [ $high -eq 1 ] ; then
+    cat $energypath'high.grid' >> energies.omp
+  fi
+  if [ $E30 -eq 1 ] ; then
+    cat $energypath'30.grid' >> energies.omp
+  fi
+  if [ $E60 -eq 1 ] ; then
+    cat $energypath'60.grid' >> energies.omp
+  fi
+  if [ $E300 -eq 1 ] ; then
+    cat $energypath'300.grid' >> energies.omp
+  fi
+  if [ $E600 -eq 1 ] ; then
+    cat $energypath'600.grid' >> energies.omp
+  fi
+  if [ $E1000 -eq 1 ] ; then
+    cat $energypath'1000.grid' >> energies.omp
+  fi
+fi
+if [ $proj == n ] && [ $fy -eq 1 ] ; then
+  energyfile=energies
+  cat > energies << EOI
+2.53e-08
+0.001
+0.5
+1.
+2.
+3.
+4.
+5.
+EOI
+fi
+#
+################################################################################
+echo "  # B.2 Create standard TALYS input file"
+################################################################################
+#
+cat > talys.inp << EOI
+#
+# TALYS input file generated by Autotalys
+#
+projectile $proj
+element    $element
+mass       $mass
+Ltarget    $Ltarget
+energy     $energyfile
+partable y
+bins $bins
+EOI
+#
+################################################################################
+echo "  # B.3 Specific additions to the TALYS input file"
+################################################################################
+#
+# Level density model
+#
+if [ $ldmodel -ne 0 ] ; then
+  cat >> talys.inp << EOI
+#
+# Level density model
+#
+ldmodel $ldmodel
+EOI
+fi
+#
+# PSF model
+#
+if [ $psfmodel -ne 0 ] ; then
+  cat >> talys.inp << EOI
+#
+# PSF model
+#
+strength $psfmodel
+EOI
+fi
+#
+# Fission model
+#
+if [ $fismodel -ne 0 ] ; then
+  cat >> talys.inp << EOI
+#
+# Fission model
+#
+fismodel $fismodel
+EOI
+fi
+#
+# Microscopic TALYS calculation
+#
+if [ $micro -eq 1 ] ; then
+  cat >> talys.inp << EOI
+#
+# Microscopic TALYS calculation
+#
+micro y
+EOI
+fi
+#
+# Use fitted input parameters if present
+#
+if [ $fit -eq 1 ] ; then
+  cat >> talys.inp << EOI
+#
+# Use fitted parameters from database
+#
+fit y
+EOI
+fi
+#
+# Use best (adjusted) input parameters if present
+#
+if [ $best -eq 1 ] ; then
+  cat >> talys.inp << EOI
+#
+# Use best parameters from database
+#
+best y
+bestend y
+EOI
+  if [ $bestlib != best ] ; then
+    cat >> talys.inp << EOI
+bestpath $bestlib
+EOI
+  fi
+else
+  cat >> talys.inp << EOI
+#
+# Do not use best parameters from database
+#
+best n
+EOI
+fi
+#
+# Ensure smoother cross sections for actinides
+#
+if [ $fission -eq 1 ] ; then
+  cat >> talys.inp << EOI
+#
+# Set multi-preequilibrium switch lower for actinides
+#
+multipreeq 6.
+EOI
+fi
+#
+# Pointwise resonance data from resonance parameters
+#
+if [ $talysresonance -eq 1 ] ; then
+  cat >> talys.inp << EOI
+#
+# Resonances
+#
+resonance y
+EOI
+fi
+#
+# High energy fission for subactinides
+#
+if [ $subfission -eq 1 ] ; then
+  cat >> talys.inp << EOI
+#
+# High-energy fission for subactinides
+#
+fission y
+EOI
+fi
+#
+# ENDF keyword added if required
+#
+if [ $endf -eq 1 ] ; then
+  cat >> talys.inp << EOI
+#
+# Produce files for processing into ENDF and increase required precision
+#
+endf y
+endfdetail y
+popeps 1.e-12
+transeps 1.e-20
+transpower 15
+xseps 1.e-20
+EOI
+fi
+if [ $Liso -gt 0 ] ; then
+  cat >> talys.inp << EOI
+#
+# Enforce isomer number for correct m,n,etc. nomenclature
+#
+Liso $Liso
+EOI
+fi
+cat >> talys.inp << EOI
+#
+# Output of extra channels
+#
+channels y
+filechannels y
+EOI
+#
+# Specific keywords for Maxwellian-Averaged Cross Section (MACS)
+#
+if [ $macs -eq 1 ] ; then
+  cat >> talys.inp << EOI
+#
+# Maxwellian-Averaged Cross Section (MACS)
+#
+astroE 0.030
+EOI
+fi
+#
+# Reduction of output for activation-only calculation
+#
+if [ $gpf -eq 0 ] && [ $fy -eq 0 ] ; then
+  cat >> talys.inp << EOI
+#
+# Reduce output for activation-only calculation
+#
+outspectra n
+outangle n
+ddxmode 0
+EOI
+  cat >> talys.inp << EOI
+outdiscrete n
+EOI
+  if [ $proj == n ] && [ $endf -eq 1 ] ; then
+    cat >> talys.inp << EOI
+outgamdis y
+EOI
+  fi
+#
+# Possible inclusion of recoil information
+#
+else
+  if [ $recoil -eq 1 ] ; then
+  cat >> talys.inp << EOI
+#
+# Recoils
+#
+recoil y
+recoilaverage y
+EOI
+  fi
+fi
+if [ $mtextra -eq 1 ] || [ $s60 -eq 1 ] ; then
+  cat >> talys.inp << EOI
+maxchannel 8
+EOI
+fi
+#
+# Cross sections for discrete levels
+#
+if [ $levels -eq 1 ] ; then
+  cat >> talys.inp << EOI
+#
+# Discrete level calculation
+#
+outdiscrete y
+filediscrete 1
+filediscrete 2
+filediscrete 3
+filediscrete 4
+filediscrete 5
+filediscrete 6
+filediscrete 7
+filediscrete 8
+filediscrete 9
+filediscrete 10
+EOI
+fi
+#
+# Fission yields
+#
+if [ $fy -eq 1 ] ; then
+  cat >> talys.inp << EOI
+#
+# Fission yields
+#
+massdis y
+fymodel 4
+ffmodel 1
+maxchannel 8
+ejectiles g n
+elow 1.e-6
+outspectra y
+filespectrum g
+filespectrum n
+recoil n
+EOI
+fi
+#
+# Option for only an optical model calculation
+#
+if [ $omponly -eq 1 ] ; then
+  cat >> talys.inp << EOI
+#
+# OMP calculation only
+#
+omponly y
+EOI
+fi
+#
+# Finer energy grid for total cross section calculation
+#
+if [ -e energies.omp ] ; then
+  cat >> talys.inp << EOI
+#
+# Finer energy grid for total cross section calculation
+#
+ompenergyfile energies.omp
+EOI
+fi
+#
+# Add keywords for testing of integral activation data
+#
+if [ $integral -eq 1 ] ; then
+  cat >> talys.inp << EOI
+#
+# Integral activation cross sections 
+#
+integral y
+EOI
+fi
+if [ $ld -eq 1 ] ; then
+  cat >> talys.inp << EOI
+#
+# Level density optimization
+#
+energy 1.
+reaction n
+outdensity y
+filedensity y
+channels n
+filechannels n
+fission n
+ejectiles g
+maxn 0
+maxz 0
+disctable 2
+EOI
+fi
+#
+# Optional external addition to the TALYS input file. use either:
+# talys.add: should be available in the working directory
+# any file with TALYS keywords: give the full pathname for -talysfile
+#
+if [ -e ${startdir}/talys.add ] ; then
+  cat >> talys.inp << EOI
+#
+# Specific keywords added through external TALYS files
+#
+EOI
+  cat ${startdir}/talys.add >> talys.inp
+fi
+if [ $talysfile != xxx ] ; then
+  cat ${talysfile} >> talys.inp
+fi
+#
+# Optional normalization with existing rescue files
+#
+if [ $rescue -eq 1 ] ; then
+  cpalways "${bestdir}${projnuc}.rescue.*"  .
+  if [ -e rescue.add ] ; then
+    cat >> talys.inp << EOI
+#
+# Rescue files to normalize data
+#
+EOI
+    cat rescue.add >> talys.inp
+  fi
+fi
+#
+# End of creation of TALYS input file
+################################################################################
+#
+################################################################################
+echo "  # B.4 Copy TALYS input files, go to talyscalc directory, and run TALYS"
+################################################################################
+#
+if [ $runtalys -eq 1 ] ; then
+  mv -f talys.inp $talyscalc
+  cpalways $energyfile $talyscalc
+  cpalways "${bestdir}${proj}-*.*"  $talyscalc
+  cpalways "${bestdir}*.lev"  $talyscalc
+  cpalways energies.omp $talyscalc
+  cpalways ${startdir}/talys.add $talyscalc
+  if [ $talysdir == xxx ] ; then
+    talysdir=$bestdir'tables/'
+  else
+    talysdir="${talysdir%/}/"
+  fi
+  if [ -d $talysdir ] ; then
+    cpalways "${talysdir}*" $talyscalc
+  fi
+  cd_or_die $talyscalc
+  echo "*** Run TALYS for the first input file"
+  require_exe "$talys"
+  $talys < talys.inp > talys.out
+else
+  rm -f talys.inp
+  if [ -d $nucpath'work/' ] ; then
+    cd_or_die $nucpath'work/'
+  else
+    die "${nucpath}work/ does not exist"
+  fi
+fi
+if [ $runtalys -eq 1 ] ; then
+  if ! grep -qi ' The TALYS team' talys.out; then
+    cat >> ${curdir}/notalys << EOI
+First input file $nuclide
+EOI
+    die "TALYS crashes"
+  else
+    echo "TALYS is done"
+  fi
+else
+  echo "Use existing TALYS calculation from ${nucpath}work/"
+fi
+#
+################################################################################
+echo "  # B.5 Optional normalization to existing data, i.e. run TALYS again"
+################################################################################
+#
+if [ $auto -eq 1 ] && [ -e $projnuc'.auto' ] ; then
+  echo "*** Run TALYS for the input file with rescue files"
+  require_exe "$autonorm"
+  if ! "$autonorm" < "${projnuc}.auto"; then
+    die "Autonorm crashes"
+  fi
+  if [ -e rescue.add ] ; then
+    cat >> talys.inp << EOI
+#
+# Rescue files to normalize data
+#
+EOI
+    cat rescue.add >> talys.inp
+  fi
+  if [ $runtalys -eq 1 ] ; then
+    $talys < talys.inp > talys.out
+    echo "TALYS is done"
+  fi
+  if ! grep -qi ' The TALYS team' talys.out; then
+    cat >> ${curdir}/notalys << EOI
+Run with rescue file $nuclide
+EOI
+    die "TALYS (rescue) crashes"
+  fi
+fi
+if [ -e talys.out ] ; then
+  head -n 1000 talys.out > tagnds_talys_out
+  rm -f talys.out
+fi
+#
+# Copy files to directories with input information
+#
+cpalways talys.inp $inppath
+cpalways parameters.dat $parpath
+cpalways "tld* ld* sd*" $parpath
+cpalways "psf*.??" $parpath
+cpalways $energyfile $inppath
+cpalways energies.omp $inppath
+#
+################################################################################
+echo "### C TEFAL: ENDF file creation"
+################################################################################
+#
+if [ $endf -eq 1 ] ; then
+  libpath=$nucpath'lib/'
+  mkdir -p $libpath
+  echo "*** Create TEFAL input files and prepare other input for ENDF files"
+#
+################################################################################
+echo "  # C.1 Create TEFAL input files"
+################################################################################
+#
+# First we make libraries without covariance data. If later a file with
+# covariance data is made, then the library without covariances is also stored
+#
+  ext[1]=
+  ext[2]=s0
+  ext[3]=s20
+  ext[4]=s60
+  ext[5]=mt
+  ext[6]=acf
+  ext[7]=eaf
+  for (( lib=1; lib<=7; lib++ )) ; do
+    library[$lib]=0
+  done
+  mf1file=${projnuc}.mf1
+  cat > endf.inp << EOI
+#
+# TEFAL input file generated by Autotalys
+#
+identifier $libname
+Eswitch 0.
+endftext endf.txt
+EOI
+  if [ $subfission -eq 1 ] ; then
+    cat >> endf.inp << EOI
+#
+# Subactinide fission
+#
+subfission y
+fis10 y
+EOI
+  fi
+  if [ $fission -eq 1 ] && [ $proj != n ] && [ $proj != g ] ; then
+    cat >> endf.inp << EOI
+#
+# Charged-particle induced fission
+#
+fis10 y
+EOI
+  fi
+  if [ $mtextra -eq 1 ] ; then
+    cat >> endf.inp << EOI
+#
+# Add extra (2010) MT numbers
+#
+mtextra y
+EOI
+  fi
+#
+# General Purpose Files (gpf)
+#
+  if [ $gpf -eq 1 ] ; then
+    cp endf.inp gpf.inp
+#
+# General keywords
+#
+    cat >> gpf.inp << EOI
+#
+# Specific keywords for general purpose library
+#
+gpf y
+mtall y
+EOI
+#
+# Specific keywords for incident neutrons
+#
+    if [ $proj == n ] ; then
+      z=`grep 'Z of target' tefal.inf | colrm 4`
+      a=`grep 'A of target' tefal.inf | colrm 4`
+      if [ $a -gt 19 ] ; then
+        if [ $talysurr -eq 1 ] ; then
+          cat >> gpf.inp << EOI
+urrmode 1
+EOI
+        else
+          cat >> gpf.inp << EOI
+urrmode 2
+EOI
+        fi
+      else
+        cat >> gpf.inp << EOI
+urrmode 0
+EOI
+      fi
+      cat >> gpf.inp << EOI
+lssf 1
+EOI
+      backflag=0
+      if [ $resonance -eq 1 ] ; then
+#
+################################################################################
+echo "  # C.2 Resonance files"
+################################################################################
+#
+# Background cross sections
+#
+        L=0
+        if [ $Liso -ne 0 ] ; then
+          L=1
+        fi
+        tareslib=default
+        mass0=`echo $mass | sed "s/^0*//;s/^$/0/"`
+        if [ $L -eq 0 ] ; then
+          if grep "$element" "$taresdef" | colrm 40 | grep "$mass0" | grep "$z" | grep 'endfb8.1' > /dev/null; then
+            backflag=1
+            tareslib=endfb8.1
+          fi
+          if grep "$element" "$taresdef" | colrm 40 | grep "$mass0" | grep "$z" | grep 'jendl5.0' > /dev/null; then
+            backflag=1
+            tareslib=jendl5.0
+          fi
+          if grep "$element" "$taresdef" | colrm 40 | grep "$mass0" | grep "$z" | grep 'jeff4.0' > /dev/null; then
+            backflag=1
+            tareslib=jeff4.0
+          fi
+          if [ $backflag -eq 1 ] ; then
+            background=${projnuc}.$tareslib
+            cat >> gpf.inp << EOI
+#
+# Adoption of MF3 background cross sections
+#
+background $background
+EOI
+          fi
+        fi
+#
+# Take resonance parameters from resbase/ or run TARES
+#
+        if [ $resbase -eq 1 ] ; then
+          mf1file=$resonancepath$nuclide'/files/'${projnuc}.mf1
+          mf2file=$resonancepath$nuclide'/files/'${projnuc}.mf2
+          mf32file=$resonancepath$nuclide'/files/'${projnuc}.mf32
+          mf33file=$resonancepath$nuclide'/files/'${projnuc}.mf33
+        else
+          require_exe "$tares"
+          echo "    *** Run TARES for resonances"
+          a0=`echo $a | sed "s/^0*//;s/^$/0/"`
+          cat > tares.inp << EOI
+#
+# TARES input for resonance parameters
+#
+charge $z
+mass $a0
+isomer $Liso
+output $projnuc
+EOI
+          if [ $mass -le 19 ] ; then
+            cat >> tares.inp << EOI
+urr n
+EOI
+          fi
+          if [ -e ${bestdir}${projnuc}.tares ] && [ $best -eq 1 ] ; then
+            cat ${bestdir}${projnuc}.tares >> tares.inp
+          fi
+#
+# Run TARES
+#
+          if ! "$tares" tares.inp > tares.out; then
+            die "TARES crashes"
+          fi
+          echo "TARES is done"
+#
+# Resonance files
+#
+          if [ $lrf7 -eq 1 ] ; then
+            otherdir=other.tares.${projnuc}.files
+            cp ${otherdir}/${projnuc}.mf2.lrf7 ${projnuc}.mf2
+            cp ${otherdir}/${projnuc}.mf32.lrf7 ${projnuc}.mf32
+            cp ${otherdir}/${projnuc}.mf32c.lrf7 ${projnuc}.mf32c
+          fi
+          mf1file=${projnuc}.mf1
+          mf2file=${projnuc}.mf2
+        fi
+        if [ -e ${mf2file} ] && [ -s ${mf2file} ] ; then
+          cat >> gpf.inp << EOI
+#
+# Adoption of resonance files
+#
+adopt  2 151 ${mf2file}
+EOI
+        fi
+      fi
+#
+################################################################################
+echo "  # C.3 nubar files"
+################################################################################
+#
+      if [ $fission -eq 1 ] || [ $subfission -eq 1 ] ; then
+        zfis=$z
+        afis=$a
+        if [ $z -lt 84 ] ; then
+          zfis=84
+        fi
+        if [ $a -lt 215 ] ; then
+          afis=215
+        fi
+        if [ $ntalys -eq 1 ] ; then
+          nrand=2
+        else
+          nrand=$ntalys
+        fi
+#
+# Take nubar from nubarbase/ or run TAFIS
+#
+        if [ $nubar -eq 1 ] ; then
+          if [ $nubarbase -eq 1 ] ; then
+            mf31file=$nubarpath$nuclide'/files/'${projnuc}.mf31
+            mt452file=$nubarpath$nuclide'/files/'${projnuc}.mt452
+            mt455file=$nubarpath$nuclide'/files/'${projnuc}.mt455
+            mt458file=$nubarpath$nuclide'/files/'${projnuc}.mt458
+          else
+            require_exe "$tafis"
+            tafislib='none'
+            if [ -e ${bestdir}${projnuc}.tafis ] && [ $best -eq 1 ] ; then
+              tafislib=`cat  ${bestdir}${projnuc}.tafis`
+            fi
+            echo "    *** Run TAFIS for nubar"
+            cat > tafis.inp << EOI
+#
+# TAFIS input for fission parameters
+#
+charge $zfis
+mass $afis
+projectile n
+normalization $tafislib
+random $nrand
+EOI
+            if ! "$tafis" tafis.inp > tafis.out; then
+              die "TAFIS crashes"
+            fi
+            echo "TAFIS is done"
+            cp -f fission.mt452.0000 ${projnuc}.mt452
+            cp -f fission.mt455.0000 ${projnuc}.mt455
+            cp -f fission.mt458.0000 ${projnuc}.mt458
+            cp -f nubar.mf31  ${projnuc}.mf31
+            mf31file=${projnuc}.mf31
+            mt452file=${projnuc}.mt452
+            mt455file=${projnuc}.mt455
+            mt458file=${projnuc}.mt458
+          fi
+          cat >> gpf.inp << EOI
+#
+# Adoption of MF1 fission parameters
+#
+adopt  1 452 $mt452file
+adopt  1 455 $mt455file
+adopt  1 458 $mt458file
+EOI
+        fi
+#
+################################################################################
+echo "  # C.4 PFNS files"
+################################################################################
+#
+# Take PFNS from fnsbase/ or run TANES
+#
+        if [ $fns -eq 1 ] ; then
+          if [ $fnsbase -eq 1 ] ; then
+            mf5file=$fnspath$nuclide'/files/'${projnuc}.mf5
+            mf5Dfile=$fnspath$nuclide'/files/'${projnuc}.delayed.mf5
+            mf35file=$fnspath$nuclide'/files/'${projnuc}.mf35
+          else
+            taneslib='none'
+            if [ -e ${bestdir}${projnuc}.tanes ] && [ $best -eq 1 ] ; then
+              taneslib=`cat  ${bestdir}${projnuc}.tanes`
+            fi
+            echo "    *** Run TANES for fns"
+            cat > tanes.inp << EOI
+#
+# TANES input for fission neutron spectrum
+#
+charge $zfis
+mass $afis
+library $taneslib
+random $nrand
+EOI
+            require_exe "$tanes"
+            if ! "$tanes" tanes.inp > tanes.out; then
+              die "TANES crashes"
+            fi
+            echo "TANES is done"
+            cp -f fns.mf5.0000 ${projnuc}.mf5
+            cp -f fns.mf5.delayed.0000 ${projnuc}.delayed.mf5
+            cp -f fns.mf35 ${projnuc}.mf35
+            cp -f fns.mf1.delayed ${projnuc}.delayed.mf1
+            mf5file=${projnuc}.mf5
+            mf5Dfile=${projnuc}.delayed.mf5
+            mf35file=${projnuc}.mf35
+          fi
+          cat >> gpf.inp << EOI
+#
+# Adoption of MF5 fission neutron spectrum
+#
+adopt  5  18 $mf5file
+EOI
+          if [ $nubar -eq 1 ] && [ -e $mt455file ] ; then
+            cat >> gpf.inp << EOI
+#
+# Adoption of MF5 delayed fission neutron spectrum
+#
+adopt  5 455 $mf5Dfile
+EOI
+          fi
+        fi
+      fi
+#
+################################################################################
+echo "  # C.5 Further input for TEFAL"
+################################################################################
+#
+### Avoid gamma production trouble for isomeric targets
+#
+      if [ $Liso -ne 0 ] ; then
+        cat >> gpf.inp << EOI
+#
+# Avoid gamma production trouble for isomeric targets
+#
+disc6 y
+EOI
+      fi
+#
+# End of specific input for neutrons
+#
+    fi
+#
+# Specific input for photons + actinides
+#
+    if [ $fission -eq 1 ] && [ $proj == g ] ; then
+      gmass=`expr $mass - 1`
+      nucg=$element$gmass
+      cp ${librariespath}n/${nucg}/tendl.2025/files/n-${nucg}.tendl.2025 .
+      cat >> gpf.inp << EOI
+#
+# Adoption of fission neutron observables from corresponding neutron-induced reaction
+#
+adopt  1 452 n-${nucg}.tendl.2025
+adopt  1 455 n-${nucg}.tendl.2025
+adopt  1 456 n-${nucg}.tendl.2025
+adopt  5 18  n-${nucg}.tendl.2025
+adopt  5 455 n-${nucg}.tendl.2025
+EOI
+    fi
+#
+# Optional external addition to the TEFAL input file. use either:
+# tefal.add: should be available in the working directory
+# any file with TEFAL keywords: give the full pathname for -tefalfile
+#
+    if [ -e ${startdir}/tefal.add ] ; then
+      cat >> gpf.inp << EOI
+#
+# Specific keywords added through external TEFAL file
+#
+EOI
+      cat ${startdir}/tefal.add >> gpf.inp
+    fi
+    if [ $tefalfile != xxx ] ; then
+      cat ${tefalfile} >> gpf.inp
+    fi
+#
+### End of input for General Purpose File
+#
+################################################################################
+echo "  # C.6 Definition of specific libraries"
+################################################################################
+#
+### 1. Default file, with MT5 switch at 30 MeV.
+#
+    if [ $sdefault -eq 1 ] ; then
+      library[1]=1
+      endffile[1]=$projnuc'.'$libext
+      endfpath[1]=$libpath'endf/'
+      tefalinp[1]=gpf.inp
+      tefalout[1]=gpf.out
+      cat >> ${tefalinp[1]} << EOI
+#
+# Set energy to switch from specific MT numbers to lumped
+#
+Eswitch 30.
+endffile ${endffile[1]}
+EOI
+    fi
+#
+### 2. File with MT5 switch at 0 MeV, not for neutrons
+#
+    if [ $s0 -eq 1 ] && [ $proj != n ] ; then
+      library[2]=1
+      endffile[2]=$projnuc'-s0.'$libext
+      endfpath[2]=$libpath'endfs0/'
+      cp -f gpf.inp gpfs0.inp
+      tefalinp[2]=gpfs0.inp
+      tefalout[2]=gpfs0.out
+      cat >> ${tefalinp[2]} << EOI
+#
+# Set energy to switch from specific MT numbers to lumped
+#
+Eswitch 0.
+endffile ${endffile[2]}
+EOI
+    fi
+#
+### 3. File with MT5 switch at 20 MeV
+#
+    if [ $s20 -eq 1 ] ; then
+      library[3]=1
+      endffile[3]=$projnuc'-s20.'$libext
+      endfpath[3]=$libpath'endfs20/'
+      cp -f gpf.inp gpfs20.inp
+      tefalinp[3]=gpfs20.inp
+      tefalout[3]=gpfs20.out
+      cat >> ${tefalinp[3]} << EOI
+#
+# Put capture gamma-ray data in MF12-15 instead of MF6
+#
+capt6 n
+#
+# Set energy to switch from specific MT numbers to lumped
+#
+Eswitch 20.
+endffile ${endffile[3]}
+EOI
+    fi
+#
+### 4. File with MT5 switch at 60 MeV
+#
+    if [ $s60 -eq 1 ] ; then
+      library[4]=1
+      endffile[4]=$projnuc'-s60.'$libext
+      endfpath[4]=$libpath'endfs60/'
+      cp -f gpf.inp gpfs60.inp
+      tefalinp[4]=gpfs60.inp
+      tefalout[4]=gpfs60.out
+      cat >> ${tefalinp[4]} << EOI
+#
+# Set energy to switch from specific MT numbers to lumped
+#
+Eswitch 60.
+endffile ${endffile[4]}
+#
+# Add new (2010) MT numbers
+#
+mtextra y
+EOI
+      if [ $proj == d ] ; then
+#
+# Special case for explicit deuteron break-up
+#
+        cat >> ${tefalinp[4]} << EOI
+#
+# Explicit deuteron break-up
+#
+breakup y
+EOI
+      fi
+    fi
+#
+### 5. File without MT5 switch
+#
+    if [ $mt -eq 1 ] ; then
+      library[5]=1
+      endffile[5]=$projnuc'-mt.'$libext
+      endfpath[5]=$libpath'endfmt/'
+      cp -f gpf.inp gpfmt.inp
+      tefalinp[5]=gpfmt.inp
+      tefalout[5]=gpfmt.out
+      if [ $proj == d ] ; then
+#
+# Special case for explicit deuteron break-up
+#
+        cat >> ${tefalinp[5]} << EOI
+#
+# Explicit deuteron break-up
+#
+Eswitch 0.
+breakup y
+endffile ${endffile[5]}
+EOI
+      else
+        cat >> ${tefalinp[5]} << EOI
+#
+# File without MT5 switch
+#
+Eswitch 250.
+mtall n
+endffile ${endffile[5]}
+EOI
+      fi
+    fi
+  fi
+#
+### 6. ENDF-6 activation file
+#
+  if [ $acf -eq 1 ] ; then
+    library[6]=1
+    endffile[6]=$projnuc'-acf.'$libext
+    endfpath[6]=$libpath'acf/'
+    cp -f endf.inp acf.inp
+    tefalinp[6]=acf.inp
+    tefalout[6]=acf.out
+    cat >> ${tefalinp[6]} << EOI
+#
+# Specific keywords for activation library
+#
+gpf n
+endffile ${endffile[6]}
+EOI
+  fi
+#
+### 7. EAF activation file
+#
+  if [ $eaf -eq 1 ] ; then
+    library[7]=1
+    endffile[7]=$projnuc'-eaf.'$libext
+    endfpath[7]=$libpath'eaf/'
+    cp -f endf.inp eaf.inp
+    tefalinp[7]=eaf.inp
+    tefalout[7]=eaf.out
+    cat >> ${tefalinp[7]} << EOI
+#
+# Specific keywords for EAF library
+#
+gpf n
+eaf y
+endffile ${endffile[7]}
+EOI
+  fi
+#
+################################################################################
+echo "  # C.7 Loop over various types of libraries and run TEFAL and associated codes"
+################################################################################
+#
+# lib=1: ENDF-6 general purpose file with MT5 switch at 30 MeV
+# lib=2: ENDF-6 general purpose file with MT5 switch at 0 MeV
+# lib=3: ENDF-6 general purpose file with MT5 switch at 20 MeV
+# lib=4: ENDF-6 general purpose file with MT5 switch at 60 MeV
+# lib=5: ENDF-6 general purpose file with no MT5 switch
+# lib=6: ENDF-6 activation file
+# lib=7: EAF activation file
+#
+  for (( lib=1; lib<=7; lib++ )) ; do
+    if [ $lib -eq 1 ] ; then
+      if [ -e $mf1file ] ; then
+        cp $mf1file res.mf1
+        grep 'Plots of different cross sections' res.mf1 >> /dev/null
+        if [ $? -eq 0 ] ; then
+          sed '/Plots of different cross sections/,$d' res.mf1 > tmp
+          mv tmp res.mf1
+          cat >> res.mf1 << EOI
+  ---------------------------------------------------------------
+  ---------------------------------------------------------------
+EOI
+        fi
+      fi
+      if [ -e adjust.dat ] ;then
+        cat adjust.dat >> ${projnuc}.talys
+      fi
+      if [ $auto -eq 1 ] && [ -e ${projnuc}.auto ] ; then
+        cat >> ${projnuc}.talys << EOI
+
+          Normalization to other libraries
+
+EOI
+        cat ${projnuc}.auto >> ${projnuc}.talys
+      fi
+    fi
+    if [ ${library[$lib]} -eq 0 ] ; then
+      continue
+    fi
+    pathname=${endfpath[$lib]}
+    filename=${endffile[$lib]}
+    mkdir -p $pathname
+    if [ $lib -eq 1 ] ; then
+      mkdir -p $pathname'plots/'
+      mkdir -p $pathname'tables/'
+    fi
+#
+# Make MF1 information file
+#
+    if [ $lib -le 5 ] ; then
+      ftype=gpf
+    else
+      ftype=acf
+    fi
+    if [ $lib -eq 2 ] ; then
+      detail='-nodetail'
+    else
+      detail='-detail'
+    fi
+    emin=`head -1 $energyfile | awk '{print $1}'`
+    emax=`tail -1 $energyfile | awk '{print $1}'`
+    if [ $fission -eq 1 ] ; then
+      fisflag='-fission'
+    else
+      fisflag='-nofission'
+    fi
+    mf1flag[$lib]=" -proj $proj -element $element -mass $mass -type $ftype $fisflag $detail -emin $emin -emax $emax -mf2file res.mf1 -talysfile ${projnuc}.talys -addfile ${bestdir}${projnuc}.txt "
+    require_exe "$mf1maker"
+    $mf1maker ${mf1flag[$lib]} -nocovariance
+#
+# Optional external addition to the TEFAL input file. use either:
+# tefal.add: should be available in the working directory
+# any file with TEFAL keywords: give the full pathname for -tefalfile
+#
+    if [ -e ${startdir}/tefal.add ] ; then
+      cat >> ${tefalinp[$lib]} << EOI
+#
+# Specific keywords added through the tefal.add file
+#
+EOI
+      cat ${startdir}/tefal.add >> ${tefalinp[$lib]}
+    fi
+    if [ $tefalfile != xxx ] ; then
+      cat ${tefalfile} >> ${tefalinp[$lib]}
+    fi
+    if [ -e ${bestdir}${projnuc}.tefal ] ; then
+      for worldlib in endfb8.1 jeff4.0 jendl5.0 cendl3.2 tendl.2025 ; do
+        worldfile=${librariespath}${proj}/${nuclide}/${worldlib}/files/${projnuc}.$worldlib
+        if [ -e $worldfile ] ; then
+          cp $worldfile .
+        fi
+      done
+      cat >> ${tefalinp[$lib]} << EOI
+#
+# Best parameters for TEFAL added from the best/ database
+#
+EOI
+      cat ${bestdir}${projnuc}.tefal >> ${tefalinp[$lib]}
+    fi
+#
+### For EAF libraries: Make non-threshold reactions pointwise:
+#     only possible if also -gpf is enabled
+#
+    if [ $lib -eq 7 ] && [ $gpf -eq 1 ] && [ $proj == n ] && [ $prepro -eq 1 ] ; then
+      echo "*** Adopt PREPRO results for groupwise EAF data "
+      cat >> ${tefalinp[$lib]} << EOI
+#
+# Adopt PREPRO results for groupwise EAF data
+#
+adopt  3 102 ${endffile[1]}.pendf 1.e-5 2.e8
+EOI
+      if [ $fission -eq 1 ] ; then
+        cat >> ${tefalinp[$lib]} << EOI
+adopt  3  18 ${endffile[1]}.pendf 1.e-5 2.e8
+EOI
+      fi
+    fi
+#
+################################################################################
+echo "  # C.8 Run TEFAL and copy files"
+################################################################################
+#
+    echo "*** Run TEFAL to make ENDF file ( $filename ) without covariance data"
+    require_exe "$tefal"
+    $tefal < ${tefalinp[$lib]} > ${tefalout[$lib]}
+#
+# Record unsuccessful TEFAL run
+#
+    if [ ! -e $filename ] ; then
+      cat >> ${curdir}/nofile << EOI
+$filename
+EOI
+    fi
+    if ! grep -qi ' TEFAL has created' ${tefalout[$lib]}; then
+      if [ $runtalys -eq 1 ] ; then
+        mv $talyscalc $nucpath'work'
+      fi
+      die "TEFAL crashes for $filename"
+    else
+      echo "TEFAL is done"
+    fi
+    checkpath=$pathname'check/'
+    mkdir -p $checkpath
+#
+# Check for NaN or Inf
+#
+    grep -i ' NaN ' "$filename" | grep -v 1451 > NaNInf.ers || true
+    grep -i ' Inf ' "$filename" | grep -v 1451 >> NaNInf.ers || true
+    if [ -e NaNInf.ers ] && [ -s NaNInf.ers ] ; then
+      cat >> NaNInf.ers << EOI
+$filename
+EOI
+      cp -f NaNInf.ers $pathname'check/'
+    fi
+#
+################################################################################
+echo "  # C.9 Run CHECKR, FIZCON and PSYCHE"
+################################################################################
+#
+#
+    if [ $lib -le 5 ] ; then
+      if [ $bnl -eq 1 ] ; then
+        echo "    *** Run BNL checking codes for $filename "
+        require_exe "$autobnl"
+        $autobnl -file $filename -outmode 2 -nointer
+        cp -f checkr.ers fizcon.ers psyche.ers $checkpath
+        cp -f $filename.checkr $filename.fizcon* $filename.psyche  $checkpath
+      fi
+    fi
+#
+################################################################################
+echo "  # C.10 For EAF: Run PREPRO for pointwise data"
+################################################################################
+#
+    if [ $eaf -eq 1 ] && [ $proj == n ] && [ $lib -eq 1 ] ; then
+      require_exe "$autoprepro"
+      $autoprepro -file $filename -nomerger -noevalplot
+    fi
+    if [ $covar -eq 1 ] && [ $lib -ne 7 ] ; then
+      cp -f $filename $pathname$filename'_nocov'
+    else
+      cp -f $filename $pathname
+    fi
+    cp -f ${tefalinp[$lib]} $inppath
+  done
+fi
+#
+################################################################################
+echo "  # C.11 Copy files with reaction information"
+################################################################################
+#
+if [ $tables -eq 1 ] ; then
+  cpalways all.tot $xspath
+  cpalways nonelastic.tot $xspath
+  cpalways reaction.tot $xspath
+  cpalways "?prod.tot" $xspath
+  cpalways "rp*.tot" $respath
+  cpalways "rp*.L*" $respath
+  cpalways "$proj${proj}*ang.L??" $angpath
+  cpalways "*spec????.???.tot" $specpath
+  cpalways "xs[0-3]*.tot" $xspath
+  cpalways "xs[0-3]*.L*" $xspath
+  cpalways "${proj}?.???" $xspath
+  if [ $proj == n ] ; then
+    cpalways total.tot $xspath
+    cpalways elastic.tot $xspath
+    cpalways integral.dat $intpath
+    cpalways "gam*" $gampath
+  fi
+  if [ $fission -eq 1 ] || [ $subfission -eq 1 ] ; then
+    cpalways fission.tot $xspath
+    cpalways "fis*" $xspath
+  fi
+  if [ $macs -eq 1 ] ; then
+    cpalways "macs.*" $intpath
+    cpalways "astrorate.*" $intpath
+  fi
+  if [ $fy -eq 1 ] ; then
+    cpalways "yield*.fis" $fypath
+    cpalways "nubar?.tot" $fypath
+    cpalways "nu*.fis" $fypath
+    cpalways "Pnu*.fis" $fypath
+    cpalways "pf*.fis" $fypath
+    cpalways "fp*.tot" $fypath
+  fi
+fi
+if [ $covar -eq 1 ] || [ $search -eq 1 ] || [ $sens -eq 1 ] ; then
+#
+################################################################################
+echo "### D TASMAN: Covariance calculation"
+################################################################################
+#
+################################################################################
+echo "  # D.1 Create TASMAN input file"
+################################################################################
+#
+##### General TASMAN options
+#
+  echo "*** Create TASMAN input file and directories"
+  if [ $seed -eq 0 ] ; then
+    seed=$mass
+  fi
+  cat >> tasman.inp << EOI
+#
+# TASMAN input file generated by Autotalys
+#
+EOI
+  cat talys.inp >>  tasman.inp
+  cat >> tasman.inp << EOI
+#
+# TASMAN
+#
+bins $binsrand
+#change
+#liso $Liso
+#seed $seed
+EOI
+  if [ $covar -eq 1 ] ; then
+    cat >> tasman.inp << EOI
+##
+## Covariance keywords
+##
+#mode 1
+#band y
+#save y
+#offset $offset
+#gauss n
+#discrete y
+#average 2
+#ntalys $ntalys
+EOI
+    if [ $weight -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+##
+## Use weights
+##
+#weight y
+EOI
+    else
+      cat >> tasman.inp << EOI
+##
+## Do not use weights
+##
+#weight n
+EOI
+    fi
+    if [ $nburn -ne -1 ] ; then
+      cat >> tasman.inp << EOI
+##
+## Number of burn-in samples
+##
+#nburn $nburn
+EOI
+    fi
+    if [ $ompvar -eq 0 ] ; then
+      cat >> tasman.inp << EOI
+##
+## No ECIS calculation
+##
+#ecis n
+EOI
+    fi
+    if [ $isomer -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+##
+## Covariance data for isomers
+##
+#isomer y
+EOI
+    fi
+    if [ $residual -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+##
+## Covariance data for residual and production cross sections
+##
+#residual y
+#prod y
+EOI
+    fi
+    if [ $ransens -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+##
+## Random sensitivity analysis
+##
+#sens y
+EOI
+    fi
+    if [ $allrandom -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+##
+## Random files for all ENDF options
+##
+#defonly n
+EOI
+    fi
+    if [ $allprocess -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+##
+## Random files for all ENDF options
+##
+#proconly n
+EOI
+    fi
+    if [ $select -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+##
+## Selected randomization
+##
+#select y
+EOI
+    fi
+    if [ $covrand -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+##
+## Update covariance file after every run
+##
+#covrand y
+EOI
+    fi
+    if [ $proj == n ]  && [ $best -eq 1 ] ; then
+      grep -hs cwidth ${bestdir}${projnuc}.ta*  >> tasman.inp
+    fi
+  fi
+  if [ $sens -eq 1 ] ; then
+    cat >> tasman.inp << EOI
+##
+## Sensitivity keywords
+##
+best n
+channels y
+filechannels y
+#mode 2
+EOI
+    if [ $morris -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+#morris y
+EOI
+    fi
+    if [ $isomer -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+##
+## Sensitivity data for isomers
+##
+#isomer y
+EOI
+    fi
+  fi
+  if [ $search -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+##
+## Search keywords
+##
+#mode 3
+#chi2 1
+#save y
+#deltaE n
+EOI
+    if [ $ld -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+##
+## TASMAN flags for level density optimization
+##
+#ld y
+#ntalys $ntalys
+EOI
+    fi
+    if [ $autosearch -eq 1 ] ; then
+      if [ $tasmanfile == xxx ] ; then
+        cat >> tasman.inp << EOI
+#parameters y
+#expinclude all
+##libinclude all
+#Zdeep 2
+#Adeep 4
+EOI
+      fi
+    fi
+  fi
+  if [ $integral -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+#integral y
+EOI
+  fi
+  if [ $endf -eq 1 ] ; then
+    cat >> tasman.inp << EOI
+##
+## Total Monte Carlo keywords
+##
+#tmc y
+EOI
+    if [ $gpf -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+#angle y
+#legendre y
+EOI
+    fi
+    if [ $proj == n ] ; then
+      cat >> tasman.inp << EOI
+#resonance y
+##tareslib $tareslib
+EOI
+      if [ $resbase -eq 1 ] ; then
+        cat >> tasman.inp << EOI
+#runtares n
+EOI
+      else
+        cat >> tasman.inp << EOI
+#runtares y
+EOI
+      fi
+      if [ $lrf7 -eq 1 ] ; then
+        cat >> tasman.inp << EOI
+#lrf7 y
+EOI
+      fi
+      if [ $backflag -eq 1 ] ; then
+        cat >> tasman.inp << EOI
+#background $background
+EOI
+      fi
+      if [ $fission -eq 1 ] ; then
+        if [ $nubar -eq 1 ] ; then
+          cat >> tasman.inp << EOI
+#nubar y
+EOI
+          if [ $nubarbase -eq 1 ] ; then
+            cat >> tasman.inp << EOI
+#runnubar n
+EOI
+          else
+            cat >> tasman.inp << EOI
+#runnubar y
+#tafislib $tafislib
+EOI
+          fi
+        fi
+        if [ $fns -eq 1 ] ; then
+          cat >> tasman.inp << EOI
+#fns y
+EOI
+          if [ $fnsbase -eq 1 ] ; then
+            cat >> tasman.inp << EOI
+#runfns n
+EOI
+          else
+            cat >> tasman.inp << EOI
+#runfns y
+#taneslib $taneslib
+EOI
+          fi
+        fi
+      fi
+    else
+      cat >> tasman.inp << EOI
+#resonance n
+EOI
+    fi
+    if [ $s20 -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+#s20 y
+EOI
+    fi
+    if [ $s60 -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+#s60 y
+EOI
+    fi
+    if [ $mt -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+#mt y
+EOI
+    fi
+    if [ $acf -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+#acf y
+EOI
+    fi
+    if [ $eaf -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+#eaf y
+EOI
+    fi
+    if [ $prepro -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+#prepro y
+EOI
+    else
+      cat >> tasman.inp << EOI
+#prepro n
+EOI
+    fi
+    if [ $njoy -eq 1 ] ; then
+      cat >> tasman.inp << EOI
+#njoy y
+EOI
+    else
+      cat >> tasman.inp << EOI
+#njoy n
+EOI
+    fi
+  fi
+  if [ $proj == d ] || [ $proj == t ] || [ $proj == h ] || [ $proj == a ] ; then
+    cat >> tasman.inp << EOI
+##
+## Larger width for composite projectiles
+##
+#cwidth 1.5
+EOI
+  fi
+#
+# Optional external addition to the TASMAN input file. use either:
+# tasman.add: should be available in the working directory
+# any file with TASMAN keywords: give the full pathname for -tasmanfile
+#
+  if [ -e ${startdir}/tasman.add ] ; then
+    cat >> tasman.inp << EOI
+##
+## Specific keywords added through the tasman.add file
+##
+EOI
+    cat ${startdir}/tasman.add >> tasman.inp
+  fi
+#
+##### Include parameters to be varied
+#
+  if [ -e rescue.add ] ; then
+    cat >> tasman.inp << EOI
+##
+## Rescue files to normalize data
+##
+EOI
+    cat rescue.add >> tasman.inp
+  fi
+  if [ $covar -eq 1 ] ; then
+    npar=40
+  else
+    if [ $high -eq 0 ] && [ $E60 -eq 0 ] && [ $E300 -eq 0 ] && [ $E600 -eq 0 ] && [ $E1000 -eq 0 ] ; then
+      npar=8
+    else
+      npar=12
+    fi
+  fi
+  cat >> tasman.inp << EOI
+##
+## Parameters to be varied
+##
+EOI
+  if [ $parauto -eq 1 ] && [ $autosearch -eq 1 ] ; then
+#
+# Covariance
+#
+    if [ $sens -eq 0 ] ; then
+      for (( loop=-1; loop<=6; loop++ )) ; do
+        case $loop in
+         -1)  part=$proj;;
+          0)  part=n;;
+          1)  part=p;;
+          2)  part=a;;
+          3)  part=g;;
+          4)  part=d;;
+          5)  part=t;;
+          6)  part=h;;
+        esac
+        if [ $loop -gt -1 ] && [ $part == $proj ] ; then
+          continue
+        fi
+        if [ $ompvar -eq 1 ] ; then
+          if [ $part == n ] || [ $part == p ] || [ $part == d ] || [ $part == a ] ; then
+            grep 'adjust' parameters.dat | grep " $part " | grep -v 'tlj' >> tasman.inp
+          fi
+        fi
+        grep 'strip   ' parameters.dat | grep " $part " >> tasman.inp
+        grep 'knock   ' parameters.dat | grep " $part " >> tasman.inp
+        grep 'break   ' parameters.dat | grep " $part " >> tasman.inp
+        if [ $loop -eq -1 ] ; then
+          grep 'M2constant' parameters.dat >> tasman.inp
+          grep 'Rgamma' parameters.dat >> tasman.inp
+          grep -m 1 'etableadjust' parameters.dat  >> tasman.inp
+          grep -m 1 'ftableadjust' parameters.dat  >> tasman.inp
+          grep -m 1 'wtableadjust' parameters.dat  >> tasman.inp
+          grep -m 1 'upbendcadjust' parameters.dat  >> tasman.inp
+          grep -m 1 'upbendeadjust' parameters.dat  >> tasman.inp
+          grep -m 1 'upbendfadjust' parameters.dat  >> tasman.inp
+          grep -m $npar 's2adjust' parameters.dat >> tasman.inp
+          grep -m $npar 'gadjust' parameters.dat >> tasman.inp
+          if [ $sens -eq 1 ] ; then
+            xxx=xxx
+          else
+            xxx=$ACN
+          fi
+          grep -m $npar 'ctableadjust' parameters.dat  | grep -v " $xxx "  >> tasman.inp
+          grep -m $npar 'ptableadjust' parameters.dat  | grep -v " $xxx "  >> tasman.inp
+          if [ $isomer -eq 1 ] ; then
+            grep -m $npar 'Risomer' parameters.dat >> tasman.inp
+          fi
+          if [ $fission -eq 1 ] ; then
+            if [ $micro -eq 1 ] || [ $fismodel -eq 6 ] || [ $fismodel -eq 0 ] ; then
+              grep -m $npar 'vfiscoradjust' parameters.dat >> tasman.inp
+              grep -m $npar 'rmiufiscoradjust' parameters.dat >> tasman.inp
+            else
+              for par in fisbaradjust fishwadjust deltaW class2width Krotconstant ; do
+                grep -m $npar $par parameters.dat >> tasman.inp
+              done
+            fi
+          fi
+          if [ $subfission -eq 1 ] ; then
+            grep 'Cbarrier' parameters.dat >> tasman.inp
+          fi
+        fi
+      done
+    else
+#
+# Sensitivity
+#
+      for part in n p a; do
+        for param in rvadjust avadjust v1adjust v2adjust v3adjust w1adjust w2adjust rwdadjust awdadjust d1adjust d2adjust d3adjust rvsoadjust avsoadjust vso1adjust; do
+          echo $param $part '1.00000' >> tasman.inp
+        done
+      done
+      for param in etableadjust ftableadjust wtableadjust ; do
+        echo $param 0 0 '1.00000 E1' >> tasman.inp
+      done
+      for param in upbendcadjust upbendeadjust upbendfadjust ; do
+        echo $param 0 0 '1.00000 M1' >> tasman.inp
+      done
+      for param in ctableadjust ptableadjust s2adjust gadjust; do
+        echo $param 0 0 '1.00000' >> tasman.inp
+        echo $param 0 1 '1.00000' >> tasman.inp
+        echo $param 0 2 '1.00000' >> tasman.inp
+        echo $param 1 1 '1.00000' >> tasman.inp
+        echo $param 1 2 '1.00000' >> tasman.inp
+        echo $param 2 4 '1.00000' >> tasman.inp
+      done
+      if [ $isomer -eq 1 ] ; then
+        echo 'Risomer 0 0 1.00000' >> tasman.inp
+        echo 'Risomer 0 1 1.00000' >> tasman.inp
+        echo 'Risomer 0 2 1.00000' >> tasman.inp
+        echo 'Risomer 1 1 1.00000' >> tasman.inp
+        echo 'Risomer 1 2 1.00000' >> tasman.inp
+        echo 'Risomer 2 4 1.00000' >> tasman.inp
+      fi
+      for param in M2constant Rgamma Cbarrier; do
+        echo $param '1.00000' >> tasman.inp
+      done
+      if [ $proj != n ] && [ $proj != p ] && [ $proj != g ] ; then
+        for part in n p ; do
+          echo 'Cbreak ' $part ' 1.00000' >> tasman.inp
+          echo 'Cstrip ' $part ' 1.00000' >> tasman.inp
+          echo 'Cknock ' $part ' 1.00000' >> tasman.inp
+        done
+      else
+        for part in d a ; do
+          echo 'Cstrip ' $part ' 1.00000' >> tasman.inp
+          echo 'Cknock ' $part ' 1.00000' >> tasman.inp
+        done
+      fi
+      if [ $fission -eq 1 ] ; then
+        if [ $micro -eq 1 ] || [ $fismodel -eq 6 ] || [ $fismodel -eq 0 ] ; then
+          for param in vfiscor rmiufiscor ; do
+            echo $param '0 0 1.00000' >> tasman.inp
+            echo $param '0 1 1.00000' >> tasman.inp
+            echo $param '0 2 1.00000' >> tasman.inp
+            echo $param '0 3 1.00000' >> tasman.inp
+          done
+          for param in ctableadjust ptableadjust s2adjust ; do
+            for ibar in 1 2 ; do
+              echo $param '0 0 1.00000' $ibar>> tasman.inp
+              echo $param '0 1 1.00000' $ibar>> tasman.inp
+              echo $param '0 2 1.00000' $ibar>> tasman.inp
+              echo $param '0 3 1.00000' $ibar>> tasman.inp
+            done
+          done
+        else
+          for param in fisbaradjust fishwadjust deltaW class2width Krotconstant ; do
+            for ibar in 1 2 ; do
+              echo $param '0 0 1.00000' $ibar >> tasman.inp
+              echo $param '0 1 1.00000' $ibar >> tasman.inp
+              echo $param '0 2 1.00000' $ibar >> tasman.inp
+              echo $param '0 3 1.00000' $ibar >> tasman.inp
+            done
+          done
+          echo 'Cbarrier 1.00000' >> tasman.inp
+        fi
+      fi
+#
+# Sensitivity
+#
+    fi
+  else
+    if [ -e ${startdir}/talys.add ] ; then
+      cat ${startdir}/talys.add >> tasman.inp
+    fi
+    if [ $talysfile != xxx ] ; then
+      cat ${talysfile} >> talys.inp
+    fi
+  fi
+  if [ $search -eq 1 ] && [ $ld -eq 1 ] ; then
+    if [ $ldmodel -le 3 ] ; then
+      grep '^a         ' parameters.dat >> tasman.inp
+      if [ $ldmodel -ne 1 ] ; then
+        grep '^Pshift     ' parameters.dat >> tasman.inp
+      fi
+    else
+      grep '^ctable    ' parameters.dat >> tasman.inp
+      grep '^ptable    ' parameters.dat >> tasman.inp
+    fi
+  fi
+  if [ $best -eq 1 ] ; then
+    if [ -e ${bestdir}${projnuc}.talys ] ; then
+#
+# Best uncertainties for TASMAN added from the best/ database
+#
+      grep -i '#t#' ${bestdir}${projnuc}.talys >> tasman.inp
+    fi
+  fi
+  if [ -e ${bestdir}${projnuc}.tasman ] && [ $tasmanbest -eq 1 ] ; then
+#
+# Best TASMAN keywords added from the best/ database
+#
+    cat ${bestdir}${projnuc}.tasman >> tasman.inp
+  fi
+#
+# Final TASMAN keywords for optimization
+#
+  if [ $tasmanfile != xxx ] ; then
+    cat ${tasmanfile} >> tasman.inp
+  fi
+#
+################################################################################
+echo "  # D.2  Create directory for covariance calculation or optimization"
+################################################################################
+#
+# Covariance analysis
+#
+  if [ $covar -eq 1 ] ; then
+    cov=$curdir'/cov'
+    if [ -d $cov ] ; then
+      rm -rf $cov
+    fi
+    mkdir -p $cov
+    cpalways tasman.inp $cov
+    cpalways $energyfile $cov
+    cpalways "rescue*" $cov
+    cpalways "*.def" $cov
+    cpalways "*.lev" $cov
+    cpalways "*.omp" $cov
+    cpalways "*f.inp" $cov
+    cpalways endf.txt $cov
+    for worldlib in endfb8.1 jeff4.0 jendl5.0 cendl3.2 tendl.2025 ; do
+      worldfile=${projnuc}.$worldlib
+      if [ -e $worldfile ] ; then
+        cp $worldfile $cov
+      fi
+    done
+    if [ -d $talysdir ] ; then
+      cpalways "${talysdir}*" $cov
+    fi
+    if [ $proj == n ] && [ $endf -eq 1 ] && [ $gpf -eq 1 ] && [ $fission -eq 1 ] ; then
+      if [ $nubar -eq 1 ] && [ $nubarbase -eq 0 ] ; then
+        cp -f *.mt45* $cov
+        cp -f * $cov
+      fi
+      if [ $fns -eq 1 ]  && [ $fnsbase -eq 0 ]; then
+        cp -f fns.mf* $cov
+      fi
+    fi
+    if [ $fission -eq 1 ] && [ $proj == g ] ; then
+      cp n-*tendl.2025 $cov
+    fi
+    cd_or_die $cov
+    if [ $endf -eq 1 ] ; then
+      $mf1maker ${mf1flag[1]} -nocovariance -random
+    fi
+#
+### Create directories to store covariance information
+#
+    covpath=$nucpath'covariance/'
+    mkdir -p $covpath
+  fi
+#
+### Sensitivity analysis
+#
+  if [ $sens -eq 1 ] || [ $ransens -eq 1 ] ; then
+#
+### Create directories to store sensitivity information
+#
+    senspath=$nucpath'sensitivity/'
+    mkdir -p $senspath
+    if [ $sens -eq 1 ] ; then
+      sen=$curdir'/sen'
+      if [ -d $sen ] ; then
+        rm -rf $sen
+      fi
+      mkdir -p $sen
+      cpalways tasman.inp $sen
+      cpalways $energyfile $sen
+      cd_or_die $sen
+    fi
+  fi
+#
+### Search
+#
+  if [ $search -eq 1 ] ; then
+    sea=$curdir'/search'
+    if [ -d $sea ] ; then
+      rm -rf $sea
+    fi
+    mkdir -p $sea
+    cpalways tasman.inp $sea
+    cpalways $energyfile $sea
+    cpalways "*.omp" $sea
+    cpalways "*.def" $sea
+    cd_or_die $sea
+  fi
+#
+################################################################################
+echo "  # D.3 Run TASMAN and copy results to talyscalc directory"
+################################################################################
+#
+  echo "*** Run TASMAN"
+  if [ $runtalys -eq 1 ] ; then
+    require_exe "$tasman"
+    $tasman < tasman.inp > tasman.out
+    if ! grep -qi ' This TASMAN run' tasman.out; then
+      cat >> ${curdir}/notasman << EOI
+$nuclide
+EOI
+      die "TASMAN crashes"
+    else
+      echo "TASMAN is done"
+    fi
+  fi
+  echo "*** Copy files to various directories and return to talyscalc"
+  if [ $tables -eq 1 ] ; then
+    cpalways "xs*.ave" $xspath
+    cpalways fission.ave $xspath
+    cpalways "rp*.ave" $respath
+    cpalways "??.???.ave" $xspath
+    cpalways fission.ave $xspath
+    cpalways "total*.ave" $xspath
+    cpalways "*elastic.ave" $xspath
+    cpalways "?prod.ave" $xspath
+    cpalways "nn*ang*.ave" $angpath
+    cpalways "talys.inp.????" $inppath
+    cpalways tasman.inp $inppath
+    if [ $covar -eq 1 ] ; then
+      cpalways "his.[a-z]*" $parpath
+      xsranpath=$ranpath'xs/'
+      mkdir $xsranpath
+      cpalways "xs*.????" $xsranpath
+      cpalways "fission.????" $xsranpath
+      cpalways "??.???.????" $xsranpath
+      cpalways "fission.????" $xsranpath
+      cpalways "total*.????" $xsranpath
+      cpalways "*elastic.????" $xsranpath
+      cpalways "?prod.????" $xsranpath
+      resranpath=$ranpath'residual/'
+      mkdir $resranpath
+      cpalways "rp*.????" $resranpath
+      angranpath=$ranpath'angle/'
+      mkdir $angranpath
+      cpalways "nn*ang*.????" $angranpath
+    fi
+  fi
+  if [ $covar -eq 1 ] ; then
+    cpalways "cov*ave" $covpath
+    cpalways "var*ave" $covpath
+  fi
+  if [ $sens -eq 1 ] || [ $ransens -eq 1 ] ; then
+    cpalways tasman.inp $senspath
+    cpalways energies $senspath
+    cpalways "sens*" $senspath
+  fi
+#
+### Copy random files for Total Monte Carlo
+#
+  if [ $endf -eq 1 ] ; then
+    if [ $allrandom -eq 1 ] ; then
+      Nlib=7
+    else
+      Nlib=1
+    fi
+    for (( lib=1; lib<=$Nlib; lib++ )) ; do
+      if [ ${library[$lib]} -eq 0 ] ; then
+        continue
+      fi
+      pathname=${endfpath[$lib]}
+      mkdir -p $pathname'random/'
+      if [ $select -eq 1 ] || [ $covrand -eq 1 ] ; then
+        mkdir -p $pathname'select/'
+      fi
+      case $lib in
+        1) cp -f ${projnuc}-rand-[0-9]??? $pathname'random/'
+           if [ $select -eq 1 ] ; then
+           cp -f ${projnuc}-rand_M* $pathname'select/'
+           fi
+           if [ $covrand -eq 1 ] ; then
+             cp -f ${projnuc}-rand_cov* $pathname'select/'
+           fi
+           ;;
+        2) cpalways "${projnuc}-rand-[0-9]???.s0*" $pathname'random/';;
+        3) cpalways "${projnuc}-rand-[0-9]???.s20*" $pathname'random/';;
+        4) cpalways "${projnuc}-rand-[0-9]???.s60*" $pathname'random/';;
+        5) cpalways "${projnuc}-rand-[0-9]???.MT*" $pathname'random/';;
+        6) cpalways "${projnuc}-rand-[0-9]???.acf*" $pathname'random/';;
+        7) cpalways "${projnuc}-rand-[0-9]???.eaf*" $pathname'random/';;
+      esac
+      if [ $njoy -eq 1 ] ; then
+        if [ $lib -eq 1 ] || [ $allprocess -eq 1 ] ; then
+          cp -f ${projnuc}-rand-[0-9]???.ace $pathname'random/'
+          cp -f ${projnuc}-rand-[0-9]???.xsdir $pathname'random/'
+        fi
+      fi
+    done
+  fi
+  if [ $runtalys -eq 1 ] ; then
+    workdir=$talyscalc
+  else
+    workdir=$nucpath'/work'
+  fi
+  cp -f cov* var* $workdir
+  if [ $resbase -eq 0 ] ; then
+    cp -f *mf33 $workdir
+  fi
+  cd_or_die $workdir
+#
+################################################################################
+echo "  # D.4 Run TEFAL for ENDF file with covariance information"
+################################################################################
+#
+### Make the correct TEFAL input file, depending on the case
+#
+  if [ $endf -eq 1 ] ; then
+    echo "*** Creation of TEFAL input file including covariance data"
+    for (( lib=1; lib<=7; lib++ )) ; do
+      if [ ${library[$lib]} -eq 0 ] ; then
+        continue
+      fi
+      pathname=${endfpath[$lib]}
+      filename=${endffile[$lib]}
+      rm -f $filename
+#
+### ENDF general purpose file with covariance data
+#
+      cp ${tefalinp[$lib]} ${tefalinp[$lib]}'_cov'
+      cat >> ${tefalinp[$lib]}'_cov' << EOI
+#
+# Covariance keywords
+#
+covariance y
+EOI
+        $mf1maker ${mf1flag[$lib]} -covariance
+        if [ $proj == n ] ; then
+#
+# Covariances of fission quantities
+#
+        if [ $fission -eq 1 ] && [ $nubar -eq 1 ] ; then
+          if [ $nubarbase -eq 0 ] ; then
+            mf31file=${projnuc}.mf31
+          fi
+          cat >> ${tefalinp[$lib]}'_cov' << EOI
+adopt 31 452 $mf31file
+EOI
+        fi
+        if [ $fission -eq 1 ] && [ $fns -eq 1 ] ; then
+          if [ $fnsbase -eq 0 ] ; then
+            mf35file=${projnuc}.mf35
+          fi
+          cat >> ${tefalinp[$lib]}'_cov' << EOI
+adopt 35  18 $mf35file
+EOI
+        fi
+#
+# Covariances of resonance region
+#
+        if [ $resbase -eq 0 ] ; then
+          mf32file=${projnuc}.mf32
+          mf33file=${projnuc}.mf33
+        fi
+        if [ $compact -eq 1 ] ; then
+          mf32file=$mf32file'c'
+        fi
+#
+### Choice of MF32 or MF33 covariances. Use the s20 file always as opposite to the default
+#
+        if [ $mf33res -eq 1 ] ; then
+          if [ $lib -eq 3 ] ; then
+            mf33loc=0
+          else
+            mf33loc=1
+          fi
+        else
+          if [ $lib -eq 3 ] ; then
+            mf33loc=1
+          else
+            mf33loc=0
+          fi
+        fi
+        if [ $z -le 6 ] ; then
+          mf33loc=0
+        fi
+        if [ $mf33loc -eq 0 ] ; then
+#
+### Use MF32 covariances
+#
+          if [ -e $mf32file ] && [ -s $mf32file ] ; then
+            cat >>  ${tefalinp[$lib]}'_cov' << EOI
+#
+# Adoption of resonance uncertainty files
+#
+adopt 32 151 $mf32file
+EOI
+          fi
+        else
+#
+### Use MF33 covariances instead of MF32
+#
+          cat >> ${tefalinp[$lib]}'_cov' << EOI
+nomf 32
+adopt 33 1 $mf33file
+adopt 33 2 $mf33file
+adopt 33 102 $mf33file
+EOI
+          if [ $fission -eq 1 ] ; then
+            cat >> ${tefalinp[$lib]}'_cov' << EOI
+adopt 33 18 $mf33file
+EOI
+          fi
+        fi
+      fi
+      if [ $intercor -eq 1 ] ; then
+        cat >> ${tefalinp[$lib]}'_cov' << EOI
+intercor y
+EOI
+      else
+        cat >> ${tefalinp[$lib]}'_cov' << EOI
+intercor n
+EOI
+      fi
+#
+# Run TEFAL
+#
+      echo "*** Run TEFAL for ENDF file ( $filename )  including covariance data"
+      $tefal < ${tefalinp[$lib]}'_cov' > ${tefalout[$lib]}'_cov'
+      echo "TEFAL is done"
+#
+# Record unsuccessful TEFAL run
+#
+      if [ ! -e $filename ] ; then
+          cat >> ${curdir}/nofile << EOI
+Covariance $filename
+EOI
+      fi
+      if ! grep -qi ' TEFAL has created'  ${tefalout[$lib]}'_cov'; then
+        die "TEFAL crashes for $filename"
+      fi
+      if [ $lib -eq 7 ] ; then
+        cp -f MF33 $pathname$filename'_cov'
+      else
+        cp -f $filename $pathname
+      fi
+      cp -f ${tefalinp[$lib]}'_cov' $inppath
+#
+# Check for NaN or Inf
+#
+      grep -i ' NaN ' $filename | grep -v 1451 >> NaNInf.ers
+      grep -i ' Inf ' $filename | grep -v 1451 >> NaNInf.ers
+      if [ -e NaNInf.ers ] && [ -s NaNInf.ers ] ; then
+        cp -f NaNInf.ers $pathname'check/'
+      fi
+#
+################################################################################
+echo "  # D.5 Run CHECKR, FIZCON and PSYCHE"
+################################################################################
+#
+      if [ $lib -le 5 ] ; then
+        if [ $bnl -eq 1 ] ; then
+          echo "    *** Run BNL checking codes (covariance) for $filename"
+          require_exe "$autobnl"
+          $autobnl -file $filename -outmode 2 -nointer
+          checkpath=$pathname'check/'
+          cp -f checkr.ers fizcon.ers psyche.ers $checkpath
+          cp -f $filename.checkr $filename.fizcon* $filename.psyche $checkpath
+        fi
+      fi
+      f=$pathname$filename
+      if [ -e $f ] && [ -s $f ] && [ -e $f'_nocov' ] && [ -s $f'_nocov' ] ; then
+        rm -f $f'_nocov'
+      fi
+    done
+  fi
+fi
+#
+################################################################################
+echo "  ### E Checking, processing and plotting"
+################################################################################
+#
+if [ $endf -eq 1 ] ; then
+  for (( lib=1; lib<=5; lib++ )) ; do
+    if [ ${library[$lib]} -eq 0 ] ; then
+      continue
+    fi
+    pathname=${endfpath[$lib]}
+    filename=${endffile[$lib]}
+#
+################################################################################
+echo "  # E.1 FUDGE"
+################################################################################
+#
+    if [ $fudge -eq 1 ] ; then
+      require_exe "$autofudge"
+      if ! "$autofudge" -file "$filename"; then
+        die "FUDGE crashes"
+      fi
+      mv fudge.out $filename.fudge
+      cp fudge.dif $filename.fudge fudge.ers $pathname'check/'
+    fi
+#
+################################################################################
+echo "  # E.2 NJOY for pendfN and ACE"
+################################################################################
+#
+    if [ $njoy -eq 1 ] ; then
+      if [ $lib -eq 1 ] || [ $allprocess -eq 1 ] ; then
+        purrflag=-nopurr
+        if [ $proj == n ] ; then
+          if [ $purr == 1 ] ; then
+            purrflag=-purr
+          fi
+        fi
+        mcnpext=.00
+        if [ $Liso -eq 1 ] ; then
+          mcnpext=.10
+        fi
+        if [ $Liso -eq 2 ] ; then
+          mcnpext=.20
+        fi
+        echo "*** Run NJOY for $filename"
+        require_exe "$autonjoy"
+        $autonjoy -file $filename -version $njoybin $purrflag -mcnpext $mcnpext -temp 293.6
+        mv output $filename.njoy
+        ps2pdf $projnuc'-njoy-plots.ps' 
+        cp -f $projnuc'-njoy-plots.pdf' $pathname'plots/'
+        cp -f $filename.njoy  njoy.ers $pathname'check/'
+        cp -f $projnuc'.ace' $pathname$projnuc'.ace'${ext[$lib]}
+        cp -f $projnuc'.xsdir' $pathname$projnuc'.xsdir'${ext[$lib]}
+        cp -f njoy.inp $inppath
+#
+# Record unsuccessful NJOY run
+#
+        if [ ! -e $projnuc'.ace' ] ; then
+          cat >> ${curdir}/noace << EOI
+$filename
+EOI
+        fi
+      fi
+    fi
+#
+################################################################################
+echo "  # E.3 PREPRO and INTER"
+################################################################################
+#
+    cat >> endftables.inp << EOI
+lib $libext
+EOI
+    if [ $prepro -eq 1 ] ; then
+      echo "*** Run PREPRO for $filename "
+      require_exe "$autoprepro"
+      if [ $njoy -eq 1 ] && [ $proj == n ] && [ $lib -eq 1 ] ; then
+        $autoprepro -file $filename -mergefile  ${projnuc}.pendfN
+      else
+        $autoprepro -file $filename -nomerger
+      fi
+      mv prepro.out $filename.prepro
+      checkpath=$pathname'check/'
+      if [ $lib -eq 1 ] ; then
+        cp *pointwise.pdf $pathname'plots/'${projnuc}'-pointwise-'$libext'.pdf'
+      fi
+      cp -f $filename.prepro prepro.ers $checkpath
+      if [ $proj == n ] ; then
+        if [ -e $filename'.pendf' ] && [ -s $filename'.pendf' ] ; then
+          if [ $lib -eq 1 ] ; then
+            cp $filename'.pendf' $pathname${projnuc}'.pendf'
+          else
+            cp $filename'.pendf' $pathname${projnuc}-${ext[$lib]}'.pendf'
+          fi
+          require_exe "$autobnl"
+          if ! $autobnl -file $filename'.pendf' -outmode 2 -inter -nocheckr -nofizcon -nopsyche; then
+            die "autobnl crashes"
+          fi
+          cp $filename'.pendf.inter' $checkpath
+          require_exe "$interCE"
+          if ! $interCE < $filename'.pendf.inter' > ${projnuc}.CE; then
+            die "interCE crashes"
+          fi
+          if [ $lib -eq 1 ] ; then
+            cp ${projnuc}.CE $checkpath
+          fi
+        else
+          cat >> ${curdir}/nopendf << EOI
+$filename
+EOI
+        fi
+      fi
+      $autoprepro -file $filename -nomerger -groupie -noevalplot -clean
+      require_exe "$endftables"
+      if ! $endftables $filename'.gendf'; then
+        die "endftables crashes"
+      fi
+    fi
+    if [ $prepro -ne 1 ] || [ $proj != n ] ; then
+      require_exe "$endftables"
+      if ! $endftables $filename; then
+        die "endftables crashes"
+      fi
+    fi
+    if [ $proj == n ] ; then
+      cp ${projnuc}-MT001.$libext ${projnuc}-MT001.G.$libext
+      cp ${projnuc}-MT002.$libext ${projnuc}-MT002.G.$libext
+      if [ -e ${projnuc}-MT018.$libext ] ; then
+        cp ${projnuc}-MT018.$libext ${projnuc}-MT018.G.$libext
+      fi
+      cp ${projnuc}-MT102.$libext ${projnuc}-MT102.G.$libext
+    fi
+    if [ $lib -eq 1 ] ; then
+      mv *-MT*.${libext} $pathname'tables/'
+      mv *-rp*.${libext} $pathname'tables/'
+    fi
+#
+################################################################################
+# E.4 MCNP
+################################################################################
+#
+    if [ $mcnp -eq 1 ] && [ $lib -eq 1 ] ; then
+      if [ $proj == n ] || [ $proj == g ] || [ $proj == p ] ; then
+        echo "*** Run MCNP for $filename"
+        require_exe "$automcnp"
+        $automcnp -file ${projnuc}.ace -xsdir ${projnuc}.xsdir
+        if [ -e mcnp.ps ] && [ -s mcnp.ps ] ; then
+          ps2pdf mcnp.ps
+          if [ $lib -eq 1 ] ; then
+            cp -f mcnp.pdf $pathname'plots/'$projnuc'-plotmcnp-'$libext'.pdf'
+          fi
+        fi
+#
+# Record unsuccessful MCNP run
+#
+        if ! grep -qi 'ended successfully' mcnp.o && [ ! -s mcnp.ps ]; then
+          cat >> ${curdir}/nomcnp << EOI
+$filename
+EOI
+        fi
+        mv mcnp.o $filename.mcnp
+        cp -f mcnp.ers $filename.mcnp $pathname'check/'
+      fi
+    fi
+#
+################################################################################
+echo "  # E.5 Comparison and covariance plots with NJOY and ERRORJ"
+################################################################################
+#
+    if [ $njoy -eq 1 ] && [ $proj == n ] && [ $lib -eq 1 ] ; then
+      echo "*** Run NJOY and ERRORJ for comparison plots"
+      if [ $covar -eq 1 ] ; then
+        require_exe "$run_errorj"
+        for groups in 33 44 187; do
+          $run_errorj -file $filename -outname $projnuc -njoy $njoybin -covx njoycovx_ld -group $groups
+        done
+      fi
+      name1=TENDL
+      for worldlib in endfb8.1 jeff4.0 jendl5.0 cendl3.2 tendl.2025 ; do
+        worldfile=${librariespath}${proj}/${nuclide}/${worldlib}/files/${projnuc}.$worldlib
+        if [ -e $worldfile ] ; then
+          echo " Comparing " $filename " with " $worldfile
+          cp $worldfile .
+          require_exe "$autonjoy"
+          $autonjoy -file ${projnuc}.$worldlib -noacer -outname 2 -temp 293.6
+          name2=`echo $worldlib | tr a-z A-Z `
+          require_exe "$autoprepro"
+          $autoprepro -file ${projnuc}.pendfN  -complot -file2 ${projnuc}.${worldlib}.pendfN -nolinear -norecent -nosigma1 -nosixpak -noactivate -noevalplot -name1 $name1 -name2 $name2
+          cp ${projnuc}.pendfN-comp.pdf ${pathname}plots/${projnuc}-${worldlib}-comp.pdf
+        fi
+      done
+      cp $projnuc'-njoy'* $pathname'plots/'
+    fi
+  done
+fi
+#
+################################################################################
+echo "  # E.6 Plotting of results versus EXFOR and other libraries"
+################################################################################
+#
+echo "*** PLOTS"
+if [ $plot -eq 1 ] ; then
+  cd_or_die $plotpath
+  if [ $covar -eq 1 ] ; then
+    uncflag=unc
+  else
+    uncflag=nounc
+  fi
+  if [ $Ealways -eq 1 ] ; then
+    expflag=Ealways
+  else
+    expflag=Eonly
+  fi
+  if [ $endf -eq 1 ] ; then
+    pflags="print -calc ${nucpath}tables/ -newpath ${endfpath[1]}tables/ $uncflag $expflag subentry quality"
+  else
+    pflags="print -calc ${nucpath}tables/ talys $uncflag $expflag subentry quality"
+  fi
+  require_exe "$plotall"
+  "$plotall" "$proj" "$element" "${mass}${isosym}" "$pflags" all
+#
+# Converting postscript files into one pdf document
+#
+  cache_files=(*.eps)
+  if [ -e ${cache_files[0]} ]; then
+    gs -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER -sOutputFile=$projnuc.pdf *eps
+  fi
+fi
+#
+################################################################################
+echo "  # F Clean up"
+################################################################################
+echo "*** Clean up"
+cd_or_die $curdir
+if [ $clean -eq 1 ] ; then
+  rm -rf $talyscalc $cov $sen
+  if [ $search -eq 1 ] ; then
+    cd_or_die $sea
+    rm -f ecis* incident* xs* rp* xs* tr*
+    rm -f gof.???? talys.out
+    cd_or_die $curdir
+  fi
+else
+  if [ $runtalys -eq 1 ] ; then
+    if [ -z "${talyscalc:-}" ] || [ ! -d "$talyscalc" ] ; then
+      die "TALYS work directory ${talyscalc:-<unset>} does not exist"
+    fi
+    mv -- "$talyscalc" "${nucpath}work"
+    if [ -n "${cov:-}" ] && [ -d "$cov" ] ; then
+      mv -- "$cov" "${nucpath}work/"
+    fi
+  fi
+fi
+rm -f energies* 
+#
+# Gzip files (optional)
+#
+if [ -d $nucpath'work/' ] && [ $tarwork -eq 1 ] ; then
+  tar -C "$nucpath" -zcf "${nucpath}work.tar" work
+  rm -rf $nucpath'work/'
+  if [ $clean -eq 1 ] ; then
+    rm -f $nucpath'work.tar'
+  fi
+fi
+if [ $gzip -eq 1 ] ; then
+  if [ $njoy -eq 1 ] ; then
+    gzip ${libpath}endf/*.ace
+    gzip ${libpath}endf/check/*njoy
+  fi
+  if [ $covar -eq 1 ] ; then
+    gzip ${libpath}endf/random/*
+  fi
+fi
+#
+# Tar and/or Copy
+#
+cd_or_die "$startdir"
+if [ $tar -eq 1 ] ; then
+  tar zcf $nuclide'.tar' $nuclide
+  result=$nuclide'.tar'
+  rm -rf $nuclide
+else
+  result=$nuclide
+fi
+if [ $copydir != xxx ] ; then
+  \cp -r $result $copydir
+fi
+if [ $movedir != xxx ] ; then
+  \mv $result $movedir
+fi
+echo "AUTOTALYS is done"
+#Copyright (C)  2026 A.J. Koning
