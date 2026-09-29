@@ -38,8 +38,8 @@ The default compiler is `gfortran`, with flags `-w -O3`. Compiler and compilatio
 environment variables:
 
 ```bash
-./installation_tools.sh FC=gfortran FFLAGS="-O3 -ffp-contract=off"
-./installation_tools.sh FC=ifx FFLAGS="-O3"
+./install_autotalys_tools.bash FC=gfortran FFLAGS="-O3 -ffp-contract=off"
+./install_autotalys_tools.bash FC=ifx FFLAGS="-O3"
 ```
 
 `FC` must name a single compiler executable; `FFLAGS` is a whitespace-separated list of options.
@@ -74,7 +74,7 @@ data-root/
 To use another location:
 
 ```bash
-./installation_tools.sh DATA_ROOT=/path/to/data-root
+./install_autotalys_tools.bash DATA_ROOT=/path/to/data-root
 ```
 
 `driplist` uses TALYS abundance and experimental level files, and checks for experimental data under `libraries/n/`. 
@@ -120,9 +120,8 @@ No sample suite is included in this directory.
 ## The AUTOTALYS tools package
 
 - `README.md`: this README file
-- `installation_tools.sh`: installation script
+- `install_autotalys_tools.bash`: installation script
 - `source/`: the seven Fortran source files
 - `bin/`: compiled executables
-- `autotalys_build`: legacy build script, which edits source paths and also copies executables to `$HOME/bin`
 
-Use `installation_tools.sh` for the installation procedure described above.
+Use `install_autotalys_tools.bash` for the installation procedure described above.
