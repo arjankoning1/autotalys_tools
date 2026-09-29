@@ -1,0 +1,150 @@
+#!/bin/bash
+#
+# Script to plot TALYS and evaluated data libraries with
+# experimental data, using Gnuplot, for all reactions    
+#
+# Arjan Koning, July 23 2023
+#
+################################################################################
+# Test input
+################################################################################
+#
+echo $0 $@
+echo
+if [ $# -lt 3 ] || [ $# -gt 10 ]
+then
+  echo "Usage: $0 <projectile> <element> <A> <optional:plot flags> <subset> "
+  echo
+  echo "projectile: n g p d t h a"
+  echo "            Use Uppercase, e.g. N, to include uncertainty bands "
+  echo "element   : element symbol, e.g. Nb, NB, nb, or nB"
+  echo "A         : mass number, e.g. 93 or 093"
+  echo "plot flags: 'plot Eonly Lonly' (see plot script)" 
+  echo "subset    : all, tot, cap, inl, part"
+  echo
+  echo "Examples  : plotall n Nb 93"
+  echo "            plotall p Y 089"
+  echo "            plotall n Nb 93 'print Eonly' "
+  echo
+  exit
+fi
+#
+################################################################################
+# Initialization
+################################################################################
+#
+proj0=$1
+elem=$2
+mass=$3
+flags=$4
+subset=$5
+if [ -z "$subset" ] ; then
+  subset=all
+fi
+#
+### Produce correct string for element: only first character uppercase
+#
+elem=`echo $elem | tr A-Z a-z | awk '{print toupper(substr($0,1,1))substr($0,2)}'`
+proj=`echo $proj0 | tr A-Z a-z`
+#
+### Check for target isomer and remove and add leading zeroes for mass
+#
+echo $mass | grep -i 'm' >> /dev/null
+if [ $? -eq 0 ] ; then
+  tariso=m
+  mass=`echo $mass | sed 's/m//'`
+else
+  echo $mass | grep -i 'n' >> /dev/null
+  if [ $? -eq 0 ] ; then
+    tariso=n
+    mass=`echo $mass | sed 's/n//'`
+  else
+    tariso=
+  fi
+fi
+mass0=`echo $mass | sed 's/^0*//;s/^$/0/'`
+A=`printf "%03d"  $mass0`
+mass=$A$tariso
+#
+### Set paths 
+#
+tplot=0
+Thome=${AUTOTALYS_TOOLS_DIR}
+bin=$Thome'/bin/'
+if [ $tplot -eq 1 ] ; then
+  plot=${HOME}'/bin/tplot'
+else
+  plot=${bin}plot
+fi
+nuclide=${proj}'/'${elem}${mass}'/'
+#exphome=${Thome}/newbase/$nuclide
+exphome=${LIBRARIES_DIR}/libraries/${nuclide}/exfor/
+rpdir=$exphome'residual/'
+#
+# Run plot commands
+#
+cmd1="$plot $proj0 $elem $mass"
+if [ $subset != part ] && [ $subset != cap ] && [ $subset != inl ] ; then
+  if [ $proj == n ] ; then
+    for chan in tot totlow totlin el ; do
+      cmd="$cmd1 $chan $flags "
+#     if [ $A == 000 ] ; then
+#       cmd=$cmd' noirdff'
+#     fi
+      $cmd
+    done
+  fi
+  cmd="$cmd1 non $flags"
+# if [ $A == 000 ] ; then
+#   cmd=$cmd' noirdff'
+# fi
+  $cmd
+fi
+if [ $subset == tot ] ; then
+  exit
+fi
+for ejec in g glow ghigh f flow n 2n p a n1 n2 n3 n4 n5 n6 n7 n8 n9 n10 n11 n12 n13 n14 n15 n16 n17 n18 n19 n20 n21 n22 n23 n24 n25 n26 n27 n28 n29 n30 n31 n32 n33 n34 n35 n36 n37 n38 n39 n40 3n np na 2na n2a nd nt 4n 2np  2a 2p pa t2a abs xn xg xp xd xt xh xa d t h; do
+  if [ $proj != n ] && [ $ejec == glow ] ; then
+    continue
+  fi
+  if [ $proj != n ] && [ $ejec == ghigh ] ; then
+    continue
+  fi
+  if [ $proj != n ] && [ $ejec == flow ] ; then
+    continue
+  fi
+  if [ $subset == cap ] && [ $ejec != g ] && [ $ejec != glow ] && [ $ejec != ghigh ]; then
+    continue
+  fi
+  if [ $subset == part ] && [ $ejec != n ] && [ $ejec != 2n ] && [ $ejec != p ] && [ $ejec != a ] && [ $ejec != f ] && [ $ejec != flow ] ; then 
+    continue
+  fi
+  if [ $subset == inl ] && [ $ejec != n ] && 
+[ $ejec != n1 ] && [ $ejec != n2 ] && [ $ejec != n3 ] && [ $ejec != n4 ] &&
+[ $ejec != n5 ] && [ $ejec != n6 ] && [ $ejec != n7 ] && [ $ejec != n8 ] &&
+[ $ejec != n9 ] && [ $ejec != n10 ] && [ $ejec != n11 ] && [ $ejec != n12 ] && [ $ejec != n13 ] && [ $ejec != n14 ] && [ $ejec != n15 ] && [ $ejec != n16 ] && [ $ejec != n17 ] && [ $ejec != n18 ] && [ $ejec != n19 ] && [ $ejec != n20 ] && [ $ejec != n21 ] && [ $ejec != n22 ] && [ $ejec != n23 ] && [ $ejec != n24 ] && [ $ejec != n25 ] && [ $ejec != n26 ] && [ $ejec != n27 ] && [ $ejec != n28 ] && [ $ejec != n29 ] && [ $ejec != n30 ] && [ $ejec != n31 ] && [ $ejec != n32 ] && [ $ejec != n33 ] && [ $ejec != n34 ] && [ $ejec != n35 ] && [ $ejec != n36 ] && [ $ejec != n37 ] && [ $ejec != n38 ] && [ $ejec != n39 ] && [ $ejec != n40 ] ;then
+    continue
+  fi
+  chan=$proj$ejec
+  cmd="$cmd1 $chan $flags"
+  $cmd
+  if [ $ejec == g ] || [ $ejec == n ] || [ $ejec == 2n ] || [ $ejec == 3n ] || [ $ejec == p ] || [ $ejec == a ] || [ $ejec == np ] || [ $ejec == na ] || [ $ejec == 2na ] || [ $ejec == n2a ] || [ $ejec == nd ] || [ $ejec == nt ] || [ $ejec == 4n ] || [ $ejec == 2np ] || [ $ejec == 2a ] || [ $ejec == 2p ] || [ $ejec == pa ] || [ $ejec == t2a ] ; then
+      cmd="$cmd1 $chan g $flags"
+      $cmd
+      cmd="$cmd1 $chan m $flags"
+      $cmd
+      cmd="$cmd1 $chan n $flags"
+      $cmd
+  fi
+done
+if [ $proj != n ] && [ -d $rpdir ] ; then
+  for rp in `ls -1r $rpdir` ; do
+    chan=${rp:0:6}
+    iso=${rp:6:1}
+    if [ ${rp:0:1} == 0 ] || [ ${rp:0:1} == 1 ] ; then
+      cmd="$cmd1 $chan $iso $flags"
+      $cmd
+    fi
+  done
+fi
+#Copyright (C)  2019 A.J. Koning
