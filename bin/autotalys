@@ -2,7 +2,7 @@
 #
 #
 echo
-echo "       Autotalys-2.25 (Version September 28 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
+echo "       Autotalys-2.25 (Version September 30 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
 echo
 echo $0 $@
 echo
@@ -925,7 +925,6 @@ projnuc=$proj'-'$nuclide
 #
 ################################################################################
 echo "  # A.6 Set path names and executables"
-echo
 ################################################################################
 #
 ###
@@ -936,8 +935,12 @@ export TALYS_DIR="$AUTOTALYS_HOME/talys"
 export TEFAL_DIR="$AUTOTALYS_HOME/tefal"
 export TASMAN_DIR="$AUTOTALYS_HOME/tasman"
 export AUTOENDF_DIR="$AUTOTALYS_HOME/autoendf"
+export PREPRO_DIR="$AUTOTALYS_HOME/PREPRO"
+export NJOY_DIR="$AUTOTALYS_HOME/NJOY2016"
+export BNL_DIR="$AUTOTALYS_HOME/ENDF-utility-codes"
 export AUTOTALYS_TOOLS_DIR="$AUTOTALYS_HOME/autotalys_tools"
 export PATH="$AUTOTALYS_HOME/bin:$PATH"
+echo
 echo "The following are local settings for this autotalys run only"
 echo
 echo "AUTOTALYS_HOME " $AUTOTALYS_HOME
@@ -945,6 +948,9 @@ echo "TALYS_DIR " $TALYS_DIR
 echo "TEFAL_DIR " $TEFAL_DIR
 echo "TASMAN_DIR " $TASMAN_DIR
 echo "AUTOENDF_DIR " $AUTOENDF_DIR
+echo "PREPRO_DIR " $PREPRO_DIR
+echo "NJOY_DIR " $NJOY_DIR
+echo "BNL_DIR " $BNL_DIR
 echo "AUTOTALYS_TOOLS_DIR " $AUTOTALYS_TOOLS_DIR
 echo "PATH " $PATH
 echo
