@@ -78,8 +78,7 @@ fi
 ################################################################################
 #
 njoy=njoy-2016.78
-Thome=${AUTOTALYS_TOOLS_DIR}
-bin=$Thome'/bin/'
+bin="${AUTOTALYS_HOME:-$HOME}/bin/"
 covx=njoycovx
 group=187
 temp=300
