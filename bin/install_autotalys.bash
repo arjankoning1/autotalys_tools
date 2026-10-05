@@ -79,8 +79,7 @@ echo
 cd $autotalys 
 
 echo "***** Installing for autotalys: FUDGE" 
-mkdir -p fudge
-cd fudge
+cd "$autotalys/fudge"
 pyenv local 3.11.15
 
 python3 -m venv .venv
