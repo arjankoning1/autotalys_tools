@@ -77,7 +77,7 @@ fi
 # Initialization (default values) of variables
 ################################################################################
 #
-njoy=njoy-2016.78
+njoy=njoy
 bin="${AUTOTALYS_HOME:-$HOME}/bin/"
 covx=njoycovx
 group=187
