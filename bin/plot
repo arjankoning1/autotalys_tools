@@ -420,7 +420,8 @@ xsmax=1000
 ### Set paths for experimental and calculated data
 #
 projnuc=${proj}'/'${elem}${mass}'/'
-Thome=/Users/koning/
+Thome=${AUTOTALYS_TOOLS_DIR}
+bin=$Thome'/bin/'
 libdir=libraries
 exphome=${Thome}exfortables/${projnuc}
 if [ ! -d $exphome ] ; then
