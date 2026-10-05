@@ -2,7 +2,7 @@
 #
 #
 echo
-echo "       Autotalys-2.25 (Version September 30 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
+echo "       Autotalys-2.25 (Version October 5 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
 echo
 echo $0 $@
 echo
@@ -1091,6 +1091,7 @@ echo "TASMAN version:                         -tasmanversion " $tasmanversion
 echo "Code name extension:                        -extension " $extension
 echo "Best library:                                 -bestlib " $bestlib
 echo "Integral effective cross s.:     -integral/-nointegral " $integral
+echo "set -euo pipefail for ex. checks -nopipefail/-pipefail " $pipefail
 echo "Gzipped results:                         -gzip/-nogzip " $gzip
 echo "Tar final directory:                       -tar/-notar " $tar
 echo "Clean up working dirs:                 -clean/-noclean " $clean
