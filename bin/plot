@@ -423,18 +423,18 @@ projnuc=${proj}'/'${elem}${mass}'/'
 Thome=${AUTOTALYS_TOOLS_DIR}/
 bin=$Thome'bin/'
 libdir=libraries
-exphome=${Thome}exfortables/${projnuc}
+exphome=${HOME}/exfortables/${projnuc}
 if [ ! -d $exphome ] ; then
-  exphome=${Thome}${libdir}/${projnuc}exfor/
+  exphome=${HOME}/${libdir}/${projnuc}exfor/
 fi
-weightsfile=${Thome}tasman/misc/score.tab
+weightsfile=${HOME}/tasman/misc/score.tab
 extrema=${Thome}bin/extrema
 if [ $calchome == xxx ] ; then
-# calchome=/Users/koning/drip/${projnuc}tables/
+# calchome=${HOME}/drip/${projnuc}tables/
   calchome=$PWD/
 fi
 if [ $libshome == xxx ] ; then
-  libshome=${Thome}${libdir}/
+  libshome=${HOME}/${libdir}/
 fi
 #
 # Test for existence of paths
