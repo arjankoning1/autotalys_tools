@@ -95,7 +95,8 @@ source .venv/bin/activate
 python3 -m pip install --upgrade pip setuptools wheel
 
 PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH" \
-    python3 -m pip install .
+    "$VIRTUAL_ENV/bin/python3" -m pip install .
+
 
 cd ..
 echo
