@@ -3,7 +3,7 @@
 # Script to plot TALYS and evaluated data libraries with 
 # experimental data using Gnuplot, reaction by reaction
 #
-# Arjan Koning, January 9 2026
+# Arjan Koning, October 6 2026
 # Cosmetic improvement by Natalia Dzysiuk in 2017
 #
 ################################################################################
@@ -420,8 +420,8 @@ xsmax=1000
 ### Set paths for experimental and calculated data
 #
 projnuc=${proj}'/'${elem}${mass}'/'
-Thome=${AUTOTALYS_TOOLS_DIR}
-bin=$Thome'/bin/'
+Thome=${AUTOTALYS_TOOLS_DIR}/
+bin=$Thome'bin/'
 libdir=libraries
 exphome=${Thome}exfortables/${projnuc}
 if [ ! -d $exphome ] ; then
