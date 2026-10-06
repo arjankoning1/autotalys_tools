@@ -245,12 +245,3 @@ done
 for code in "${codes_f90[@]}" "${codes_f[@]}"; do
   cp "$build_dir/$code" "$bin_dir/$code"
 done
-
-
-###############################################################################
-# Finished
-###############################################################################
-
-echo
-echo "AUTOTALYS_TOOLS executables:"
-echo
