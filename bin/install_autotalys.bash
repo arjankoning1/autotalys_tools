@@ -54,7 +54,7 @@ echo "***** Installing for autotalys: PREPRO"
 cd PREPRO/source
 make clean
 make
-make install
+make install graphics=yes
 make clean
 cd ..
 cd bin
