@@ -615,7 +615,7 @@ errorr
 -21 -23 0 32 0 0 /
 $MAT $groupA 6 1 1/
 1   ${temp}   /
-0 34 1 1 -1 /
+0 34 1 1 1 /
 EOF
  if [ $groupA == 1 ] ;then
   if [ $group == 33 ] ;then
