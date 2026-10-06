@@ -78,21 +78,19 @@ echo
 
 cd $autotalys 
 
-echo "***** Installing for autotalys: FUDGE" 
+echo "***** Installing for autotalys: FUDGE"
 cd "$autotalys/fudge"
+
 pyenv local 3.11.15
 
 python3 -m venv .venv
 source .venv/bin/activate
 
 python3 -m pip install --upgrade pip setuptools wheel
-python3 -m pip install "numpy>=1.15"
-python3 -m pip install matplotlib
-python3 -m pip install PyQT5
-# FUDGE's merced Makefile invokes `g++` directly.  Prefer Apple's compiler:
-# /usr/local/bin/g++ may belong to a Homebrew installation for another CPU
-# architecture (for example arm64 on an x86_64 Mac).
-PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH" pip install git+https://github.com/LLNL/fudge.git
+
+PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH" \
+    python3 -m pip install .
+
 cd ..
 echo
 
