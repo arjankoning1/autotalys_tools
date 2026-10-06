@@ -5,9 +5,9 @@
 
 set -euo pipefail
 
-autotalys=`pwd`
+autotalys="$(pwd)"
+bin="$autotalys/bin"
 mkdir -p bin
-bin=$autotalys'/bin'
 echo "autotalys directory: " $autotalys
 echo "bin directory: " $bin
 echo
