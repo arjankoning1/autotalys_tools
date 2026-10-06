@@ -52,6 +52,12 @@ cd $autotalys
 
 echo "***** Installing for autotalys: PREPRO" 
 cd PREPRO/source
+
+# Fix EVALPLOT's Legendre-array dimension.
+sed '/^[[:space:]]*PARAMETER (MAXLEGE /s/120000/2400/' \
+  EVALPLOT/evalplot.h > EVALPLOT/evalplot.h.tmp
+mv EVALPLOT/evalplot.h.tmp EVALPLOT/evalplot.h
+
 make clean
 make
 make install graphics=yes
