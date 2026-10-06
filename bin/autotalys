@@ -3605,7 +3605,7 @@ echo "  # E.5 Comparison and covariance plots with NJOY and ERRORJ"
       if [ $covar -eq 1 ] ; then
         require_exe "$run_errorj"
         for groups in 33 44 187; do
-          $run_errorj -file $filename -outname $projnuc -njoy $njoybin -covx njoycovx_ld -group $groups
+          $run_errorj -file $filename -outname $projnuc -njoy $njoybin -covx njoycovx -group $groups
         done
       fi
       name1=TENDL
