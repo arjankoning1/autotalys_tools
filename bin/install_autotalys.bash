@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-# October 6, 2026
+# October 8, 2026
 # Arjan Koning
 
 set -euo pipefail
 
-autotalys="$(pwd)"
+autotalys="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 bin="$autotalys/bin"
 mkdir -p bin
 echo "autotalys directory: " $autotalys
