@@ -86,51 +86,68 @@ echo
 
 cd $autotalys 
 
+#
+# Installing FUDGE
+#
 echo "***** Installing for autotalys: FUDGE"
 
-# FUDGE is optional because it has too many dependencies. 
-# Use Python 3.11 without requiring pyenv.
-# Keep set -euo pipefail for all other installations.
 install_fudge() (
   local python_exe=""
+  local pyenv_prefix=""
 
   if [[ ! -d "$autotalys/fudge" ]]; then
     echo "WARNING: FUDGE source directory not found."
     return 1
   fi
 
-  if command -v python3.11 >/dev/null 2>&1; then
-    python_exe="$(command -v python3.11)"
-  elif command -v pyenv >/dev/null 2>&1; then
-    local pyenv_prefix
-    if pyenv_prefix="$(pyenv prefix 3.11.15 2>/dev/null)" &&
+  # Prefer Python 3.11.15 from pyenv, even if it is not the active version.
+  # Resolve the real executable rather than accepting an inactive pyenv shim.
+  if command -v pyenv >/dev/null 2>&1; then
+    if pyenv_prefix="$(PYENV_VERSION=3.11.15 pyenv prefix 2>/dev/null)" &&
        [[ -x "$pyenv_prefix/bin/python3.11" ]]; then
       python_exe="$pyenv_prefix/bin/python3.11"
     fi
   fi
 
+  # Otherwise use an available, working Python 3.11 interpreter.
   if [[ -z "$python_exe" ]]; then
-    echo "WARNING: Python 3.11 is not available; FUDGE cannot be installed."
+    local candidate=""
+    candidate="$(command -v python3.11 || true)"
+    if [[ -n "$candidate" ]] &&
+       "$candidate" --version >/dev/null 2>&1; then
+      python_exe="$candidate"
+    fi
+  fi
+
+  if [[ -z "$python_exe" ]]; then
+    echo "WARNING: Python 3.11 is not available."
     return 1
   fi
 
   cd "$autotalys/fudge" || return 1
-  echo "Using Python: $python_exe"
-  "$python_exe" -m venv .venv || return 1
-  .venv/bin/python -m pip install --upgrade pip setuptools wheel || return 1
 
-  # Preserve the compiler PATH preference from the original script.
-  PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH" \
-    .venv/bin/python -m pip install . || return 1
+  echo "Using Python: $python_exe"
+  "$python_exe" --version
+
+  # Create an isolated Python environment.
+  "$python_exe" -m venv .venv || return 1
+
+  .venv/bin/python -m pip install \
+    --upgrade pip setuptools wheel || return 1
+
+  # Install FUDGE without overriding PATH.
+  .venv/bin/python -m pip install . || return 1
+
+  echo "FUDGE installed successfully."
 )
 
 if install_fudge; then
   echo "FUDGE installation completed."
 else
-  echo "WARNING: FUDGE installation was skipped or failed."
-  echo "WARNING: Continuing AUTOTALYS installation without FUDGE."
+  echo "WARNING: FUDGE installation failed."
+  echo "WARNING: Continuing without FUDGE."
 fi
+
 echo
 
 cd $autotalys 
-
