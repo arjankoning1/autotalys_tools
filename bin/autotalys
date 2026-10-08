@@ -2,7 +2,7 @@
 #
 #
 echo
-echo "       Autotalys-2.25 (Version October 5 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
+echo "       Autotalys-2.25 (Version October 8 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
 echo
 echo $0 $@
 echo
@@ -982,9 +982,9 @@ interCE=$bin'interCE'
 energypath=${AUTOTALYS_HOME}'/tefal/misc/'
 taresdef=${AUTOTALYS_HOME}'/tefal/misc/background'
 librariespath=${HOME}'/libraries/'
-resonancepath=$librariespath'resbase/'
-nubarpath=$librariespath'nubarbase/'
-fnspath=$librariespath'fnsbase/'
+resonancepath=${AUTOTALYS_HOME}'/resbase/'
+nubarpath=${AUTOTALYS_HOME}'/nubarbase/'
+fnspath=${AUTOTALYS_HOME}'/fnsbase/'
 structure=${AUTOTALYS_HOME}'/talys/structure/'
 #
 # We run Autotalys in the current directory.
