@@ -21,7 +21,6 @@ FFLAGS=${FFLAGS:-"-w -O3"}
 #
 #   autotalys/
 #     talys/
-#     resonancetables/
 #     libraries/
 #     autotalys_tools/
 #
@@ -187,11 +186,10 @@ for code in "${codes_f90[@]}"; do
   # Make a temporary configured version of the source.
   #
   # These substitutions allow the utilities to find TALYS,
-  # resonancetables and libraries when installed as part of AUTOTALYS.
+  # and libraries when installed as part of AUTOTALYS.
   #
   sed \
     -e "s|^  basedir = .*|  basedir = '${escaped_root}'|" \
-    -e "s|^  valdir = .*|  valdir = '${escaped_root}resonancetables/'|" \
     -e "s|'../../talys/|'talys/|g" \
     -e "s|'../../libraries/|'libraries/|g" \
     "$source_dir/$code.f90" \
