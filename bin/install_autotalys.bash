@@ -34,6 +34,8 @@ done
 #
 cd $autotalys 
 
+ln -sfn ~/libraries .
+
 echo "***** Installing for autotalys: BNL ENDF-utility-codes" 
 cd ENDF-utility-codes
 mkdir -p bin
@@ -85,22 +87,50 @@ echo
 cd $autotalys 
 
 echo "***** Installing for autotalys: FUDGE"
-cd "$autotalys/fudge"
 
-pyenv local 3.11.15
+# FUDGE is optional because it has too many dependencies. 
+# Use Python 3.11 without requiring pyenv.
+# Keep set -euo pipefail for all other installations.
+install_fudge() (
+  local python_exe=""
 
-python3 -m venv .venv
-source .venv/bin/activate
+  if [[ ! -d "$autotalys/fudge" ]]; then
+    echo "WARNING: FUDGE source directory not found."
+    return 1
+  fi
 
-python3 -m pip install --upgrade pip setuptools wheel
+  if command -v python3.11 >/dev/null 2>&1; then
+    python_exe="$(command -v python3.11)"
+  elif command -v pyenv >/dev/null 2>&1; then
+    local pyenv_prefix
+    if pyenv_prefix="$(pyenv prefix 3.11.15 2>/dev/null)" &&
+       [[ -x "$pyenv_prefix/bin/python3.11" ]]; then
+      python_exe="$pyenv_prefix/bin/python3.11"
+    fi
+  fi
 
-PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH" \
-    "$VIRTUAL_ENV/bin/python3" -m pip install .
+  if [[ -z "$python_exe" ]]; then
+    echo "WARNING: Python 3.11 is not available; FUDGE cannot be installed."
+    return 1
+  fi
 
+  cd "$autotalys/fudge" || return 1
+  echo "Using Python: $python_exe"
+  "$python_exe" -m venv .venv || return 1
+  .venv/bin/python -m pip install --upgrade pip setuptools wheel || return 1
 
-cd ..
+  # Preserve the compiler PATH preference from the original script.
+  PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH" \
+    .venv/bin/python -m pip install . || return 1
+)
+
+if install_fudge; then
+  echo "FUDGE installation completed."
+else
+  echo "WARNING: FUDGE installation was skipped or failed."
+  echo "WARNING: Continuing AUTOTALYS installation without FUDGE."
+fi
 echo
 
 cd $autotalys 
 
-ln -s ~/libraries .
