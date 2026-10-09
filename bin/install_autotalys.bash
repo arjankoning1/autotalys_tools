@@ -7,7 +7,8 @@ set -euo pipefail
 
 autotalys="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 bin="$autotalys/bin"
-mkdir -p bin
+cd "$autotalys"
+mkdir -p "$bin"
 echo "autotalys directory: " $autotalys
 echo "bin directory: " $bin
 echo
