@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# October 8, 2026
+# October 9, 2026
 # Arjan Koning
 
 set -euo pipefail
@@ -18,9 +18,14 @@ echo
 for code in talys tefal tasman endftables autonorm autoendf autotalys_tools; do
   echo "***** Installing for autotalys: " $code
   cd $code
-  if [ -e ./install_$code.bash ] ; then
-    ./install_$code.bash
+
+  installer="./install_${code}.bash"
+  if [[ ! -f "$installer" ]]; then
+    echo "ERROR: Missing installer: $code/$installer" >&2
+    exit 1
   fi
+  bash "$installer"
+
   cd bin
   for executable in *; do
     ln -sfn "../$code/bin/$executable" "$bin/$executable"
