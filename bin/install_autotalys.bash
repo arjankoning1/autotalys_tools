@@ -19,12 +19,9 @@ for code in talys tefal tasman endftables autonorm autoendf autotalys_tools; do
   echo "***** Installing for autotalys: " $code
   cd $code
 
-  installer="./install_${code}.bash"
-  if [[ ! -f "$installer" ]]; then
-    echo "ERROR: Missing installer: $code/$installer" >&2
-    exit 1
+  if [ -e ./install_${code}.bash ]; then
+    ./install_${code}.bash
   fi
-  bash "$installer"
 
   cd bin
   for executable in *; do
