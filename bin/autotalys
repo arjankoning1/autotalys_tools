@@ -2,7 +2,7 @@
 #
 #
 echo
-echo "       Autotalys-2.25 (Version October 8 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
+echo "       Autotalys-2.25 (Version October 12 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
 echo
 echo $0 $@
 echo
@@ -1954,6 +1954,13 @@ EOI
 adopt  2 151 ${mf2file}
 EOI
         fi
+      else
+        cat >> gpf.inp << EOI
+#
+# Only skeleton resonance file
+#
+resonance n
+EOI
       fi
 #
 ################################################################################
