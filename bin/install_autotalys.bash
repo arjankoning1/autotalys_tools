@@ -41,16 +41,19 @@ ln -sfn ~/libraries .
 
 echo "***** Installing for autotalys: BNL ENDF-utility-codes" 
 cd ENDF-utility-codes
+cat > install_ENDF-utility-codes.bash << EOI
 mkdir -p bin
 for code in checkr fizcon psyche inter ; do
-  cd $code
-  sed 's/-std=legacy//g' Makefile > Makefile.tmp && mv Makefile.tmp Makefile
+  cd "\$code"
   make clean
   make
-  mv $code ../bin
-  ln -sfn "../ENDF-utility-codes/bin/$code" "$bin/$code"
+  mv "\$code" ../bin
+  ln -sfn "../ENDF-utility-codes/bin/\$code" "$bin/\$code"
   cd ..
 done
+EOI
+chmod +x ./install_ENDF-utility-codes.bash
+./install_ENDF-utility-codes.bash
 echo
 
 cd $autotalys 
@@ -63,6 +66,7 @@ sed '/^[[:space:]]*PARAMETER (MAXLEGE /s/120000/2400/' \
   EVALPLOT/evalplot.h > EVALPLOT/evalplot.h.tmp
 mv EVALPLOT/evalplot.h.tmp EVALPLOT/evalplot.h
 
+cat > install_PREPRO.bash << EOI
 make clean
 make
 make install graphics=yes
@@ -70,21 +74,28 @@ make clean
 cd ..
 cd bin
 for executable in *; do
-  ln -sfn "../PREPRO/bin/$executable" "$bin/$executable"
+  ln -sfn "../PREPRO/bin/\$executable" "$bin/\$executable"
 done
 cd ..
+EOI
+chmod +x ./install_PREPRO.bash
+./install_PREPRO.bash
 echo
 
 cd $autotalys 
 
 echo "***** Installing for autotalys: NJOY" 
 cd NJOY2016
+cat > install_NJOY.bash << EOI
 mkdir -p build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ../
 make -j8
 ln -sfn "../NJOY2016/build/njoy" "$bin/njoy"
 cd ../..
+EOI
+chmod +x ./install_NJOY.bash
+./install_NJOY.bash
 echo
 
 cd $autotalys 
@@ -139,6 +150,14 @@ install_fudge() (
     --upgrade pip setuptools wheel || return 1
 
   # Install FUDGE without overriding PATH.
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    # Use Apple's native compilers unless explicitly configured otherwise.
+    export CC="${CC:-/usr/bin/clang}"
+    export CXX="${CXX:-/usr/bin/clang++}"
+    # Merced assigns CXX in its Makefile, so pass compiler overrides through
+    # MAKEFLAGS to pip's make subprocess and its recursive builds.
+    export MAKEFLAGS="${MAKEFLAGS:+$MAKEFLAGS }CC=$CC CXX=$CXX"
+  fi
   .venv/bin/python -m pip install . || return 1
 
   echo "FUDGE installed successfully."
