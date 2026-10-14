@@ -2,7 +2,7 @@
 #
 #
 echo
-echo "       Autotalys-2.25 (Version October 12 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
+echo "       Autotalys-2.25 (Version October 14 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
 echo
 echo $0 $@
 echo
@@ -940,6 +940,7 @@ export NJOY_DIR="$AUTOTALYS_HOME/NJOY2016"
 export BNL_DIR="$AUTOTALYS_HOME/ENDF-utility-codes"
 export FUDGE_DIR="$AUTOTALYS_HOME/fudge"
 export AUTOTALYS_TOOLS_DIR="$AUTOTALYS_HOME/autotalys_tools"
+export BEST_DIR="$TALYS_DIR/structure/best"
 export PATH="$AUTOTALYS_HOME/bin:$PATH"
 echo
 echo "The following are local settings for this autotalys run only"
@@ -954,6 +955,7 @@ echo "NJOY_DIR " $NJOY_DIR
 echo "BNL_DIR " $BNL_DIR
 echo "FUDGE_DIR " $FUDGE_DIR
 echo "AUTOTALYS_TOOLS_DIR " $AUTOTALYS_TOOLS_DIR
+echo "BEST_DIR " $BEST_DIR
 echo "PATH " $PATH
 echo
 ###
@@ -981,7 +983,8 @@ run_errorj=$bin'run-errorj'
 interCE=$bin'interCE'
 energypath=${AUTOTALYS_HOME}'/tefal/misc/'
 taresdef=${AUTOTALYS_HOME}'/tefal/misc/background'
-librariespath=${HOME}'/libraries/'
+librariespath=${AUTOTALYS_HOME}'/libraries/'
+bestpath=${BEST_DIR}'/'
 resonancepath=${AUTOTALYS_HOME}'/resbase/'
 nubarpath=${AUTOTALYS_HOME}'/nubarbase/'
 fnspath=${AUTOTALYS_HOME}'/fnsbase/'
@@ -1151,7 +1154,7 @@ echo "  # A.9 Make path for target nuclide and create directories"
 ################################################################################
 #
 echo "*** Create subdirectories and TALYS input files"
-bestdir=$structure${bestlib}'/'$nuclide'/'
+bestdir=$bestpath${bestlib}'/'$nuclide'/'
 nucpath=$startdir'/'$nuclide'/'
 rm -f "${nucpath}"/no*
 #
@@ -2108,10 +2111,11 @@ EOI
 # Specific input for photons + actinides
 #
     if [ $fission -eq 1 ] && [ $proj == g ] ; then
-      gmass=`expr $mass - 1`
-      nucg=$element$gmass
-      cp ${librariespath}n/${nucg}/tendl.2025/files/n-${nucg}.tendl.2025 .
-      cat >> gpf.inp << EOI
+      if [ -d $librariespath ] ; then
+        gmass=`expr $mass - 1`
+        nucg=$element$gmass
+        cp ${librariespath}n/${nucg}/tendl.2025/files/n-${nucg}.tendl.2025 .
+        cat >> gpf.inp << EOI
 #
 # Adoption of fission neutron observables from corresponding neutron-induced reaction
 #
@@ -2121,6 +2125,9 @@ adopt  1 456 n-${nucg}.tendl.2025
 adopt  5 18  n-${nucg}.tendl.2025
 adopt  5 455 n-${nucg}.tendl.2025
 EOI
+      else
+        echo "Warning: libraries/ not available, fission neutron observables not used"
+      fi
     fi
 #
 # Optional external addition to the TEFAL input file. use either:
@@ -2394,12 +2401,16 @@ EOI
       cat ${tefalfile} >> ${tefalinp[$lib]}
     fi
     if [ -e ${bestdir}${projnuc}.tefal ] ; then
-      for worldlib in endfb8.1 jeff4.0 jendl5.0 cendl3.2 tendl.2025 ; do
-        worldfile=${librariespath}${proj}/${nuclide}/${worldlib}/files/${projnuc}.$worldlib
-        if [ -e $worldfile ] ; then
-          cp $worldfile .
-        fi
-      done
+      if [ -d $librariespath ] ; then
+        for worldlib in endfb8.1 jeff4.0 jendl5.0 cendl3.2 tendl.2025 ; do
+          worldfile=${librariespath}${proj}/${nuclide}/${worldlib}/files/${projnuc}.$worldlib
+          if [ -e $worldfile ] ; then
+            cp $worldfile .
+          fi
+        done
+      else
+        echo "Warning: libraries/ not available, no comparison with other data libraries"
+      fi
       cat >> ${tefalinp[$lib]} << EOI
 #
 # Best parameters for TEFAL added from the best/ database
@@ -3096,12 +3107,16 @@ echo "  # D.2  Create directory for covariance calculation or optimization"
     cpalways "*.omp" $cov
     cpalways "*f.inp" $cov
     cpalways endf.txt $cov
-    for worldlib in endfb8.1 jeff4.0 jendl5.0 cendl3.2 tendl.2025 ; do
-      worldfile=${projnuc}.$worldlib
-      if [ -e $worldfile ] ; then
-        cp $worldfile $cov
-      fi
-    done
+    if [ -d $librariespath ] ; then
+      for worldlib in endfb8.1 jeff4.0 jendl5.0 cendl3.2 tendl.2025 ; do
+        worldfile=${projnuc}.$worldlib
+        if [ -e $worldfile ] ; then
+          cp $worldfile $cov
+        fi
+      done
+    else
+      echo "Warning: libraries/ not available, no comparison with other data libraries"
+    fi
     if [ -d $talysdir ] ; then
       cpalways "${talysdir}*" $cov
     fi
@@ -3618,20 +3633,24 @@ echo "  # E.5 Comparison and covariance plots with NJOY and ERRORJ"
         done
       fi
       name1=TENDL
-      for worldlib in endfb8.1 jeff4.0 jendl5.0 cendl3.2 tendl.2025 ; do
-        worldfile=${librariespath}${proj}/${nuclide}/${worldlib}/files/${projnuc}.$worldlib
-        if [ -e $worldfile ] ; then
-          echo " Comparing " $filename " with " $worldfile
-          cp $worldfile .
-          require_exe "$autonjoy"
-          $autonjoy -file ${projnuc}.$worldlib -noacer -outname 2 -temp 293.6
-          name2=`echo $worldlib | tr a-z A-Z `
-          require_exe "$autoprepro"
-          $autoprepro -file ${projnuc}.pendfN  -complot -file2 ${projnuc}.${worldlib}.pendfN -nolinear -norecent -nosigma1 -nosixpak -noactivate -noevalplot -name1 $name1 -name2 $name2
-          cp ${projnuc}.pendfN-comp.pdf ${pathname}plots/${projnuc}-${worldlib}-comp.pdf
-        fi
-      done
-      cp $projnuc'-njoy'* $pathname'plots/'
+      if [ -d $librariespath ] ; then
+        for worldlib in endfb8.1 jeff4.0 jendl5.0 cendl3.2 tendl.2025 ; do
+          worldfile=${librariespath}${proj}/${nuclide}/${worldlib}/files/${projnuc}.$worldlib
+          if [ -e $worldfile ] ; then
+            echo " Comparing " $filename " with " $worldfile
+            cp $worldfile .
+            require_exe "$autonjoy"
+            $autonjoy -file ${projnuc}.$worldlib -noacer -outname 2 -temp 293.6
+            name2=`echo $worldlib | tr a-z A-Z `
+            require_exe "$autoprepro"
+            $autoprepro -file ${projnuc}.pendfN  -complot -file2 ${projnuc}.${worldlib}.pendfN -nolinear -norecent -nosigma1 -nosixpak -noactivate -noevalplot -name1 $name1 -name2 $name2
+            cp ${projnuc}.pendfN-comp.pdf ${pathname}plots/${projnuc}-${worldlib}-comp.pdf
+          fi
+        done
+        cp $projnuc'-njoy'* $pathname'plots/'
+      else
+        echo "Warning: libraries/ not available, no comparison with other data libraries"
+      fi
     fi
   done
 fi
