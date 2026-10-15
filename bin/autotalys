@@ -943,7 +943,7 @@ export AUTOTALYS_TOOLS_DIR="$AUTOTALYS_HOME/autotalys_tools"
 export BEST_DIR="$TALYS_DIR/structure/best"
 export AUTONORM_DIR="$AUTOTALYS_HOME/autonorm"
 export EXFORTABLES_DIR="${EXFORTABLES_DIR:-$AUTOTALYS_HOME/exfortables}"
-export LIBRARIES_DIR="${LIBRARIES_DIR:-$AUTOTALYS_HOME/libraries}"
+export LIBRARIES_DIR="${LIBRARIES_DIR:-$HOME/libraries}"
 export PATH="$AUTOTALYS_HOME/bin:$PATH"
 echo
 echo "The following are local settings for this autotalys run only"
