@@ -69,8 +69,8 @@ mass=$A$tariso
 ### Set paths 
 #
 tplot=0
-Thome=${AUTOTALYS_TOOLS_DIR}
-bin=$Thome'/bin/'
+Thome="${AUTOTALYS_TOOLS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+bin="${Thome%/}/bin/"
 if [ $tplot -eq 1 ] ; then
   plot=${HOME}'/bin/tplot'
 else
