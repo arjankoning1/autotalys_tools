@@ -424,7 +424,9 @@ xsmax=1000
 projnuc=${proj}'/'${elem}${mass}'/'
 Thome=${AUTOTALYS_TOOLS_DIR}/
 bin=$Thome'bin/'
-exphome=${HOME}/exfortables/${projnuc}
+exforbase=${EXFORTABLES_DIR:-${AUTOTALYS_HOME:+$AUTOTALYS_HOME/exfortables}}
+exforbase=${exforbase:-$HOME/exfortables}
+exphome="${exforbase%/}/${projnuc}"
 extrema=${Thome}bin/extrema
 if [ $calchome == xxx ] ; then
 # calchome=${HOME}/drip/${projnuc}tables/
@@ -449,13 +451,6 @@ weightsfile="${TASMAN_DIR:-$HOME/tasman}/misc/score.tab"
 # EXFOR required only for Eonly
 if [[ ! -d "$exphome" && $expflag -eq 1 ]]; then
   exit 0
-fi
-#
-# Test for existence of paths
-#
-if [ ! -d $exphome ] && [ $expflag -eq 1 ] ; then
-  echo $exphome "does not exist"
-  exit
 fi
 if [ ! -d $calchome ] && [ $talys -eq 1 ] ; then
   echo $calchome "does not exist. Install or use notalys flag"
@@ -995,9 +990,15 @@ numfile=$k
 #
 # Test if there are any libraries
 #
-if [ $libflag -eq 1 ] && [ $numfile -eq $kbeg ] && [ $tplot -eq 0 ] ; then
-  rm dum
-  exit
+hascalc=0
+if [[ $talys -eq 1 && -n "$calc" && -s "$calc" ]]; then
+  hascalc=1
+fi
+
+if [[ $libflag -eq 1 && $numfile -eq $kbeg &&
+      $hascalc -eq 0 && $tplot -eq 0 ]]; then
+  rm -f dum
+  exit 0
 fi
 if [ $gof -eq 1 ] && [ -e gof.opt ] ; then
   gof1='GOF='
@@ -1018,7 +1019,7 @@ done
 #
 # Determine maximal and minimal cross section for plotting
 #
-if [ $talys -eq 1 ] && [ -n "$calc" ] ; then
+if [[ $hascalc -eq 1 ]]; then
   extr="`$extrema < $calc`"
   cat > xsm << EOI
   $extr
@@ -1432,7 +1433,7 @@ cat >> $pltfile << EOI
 #
 plot [${xbeg}:${xend}][${ybeg}:${yend}] \\
 EOI
-if [ $talys -eq 1 ] && [ -e $calc ] ; then
+if [[ $hascalc -eq 1 ]]; then
   if [ $uncband -eq 1 ] ; then
     cat >> $pltfile << EOI
 "${calc}" u ( \$1 > 0. ? \$1 : 1.e-10 ):( \$3 > 0. ? \$3 : 1.e-10 ):( \$4 > 0. ? \$4 : 1.e-10 ) notitle w filledcurves linecolor rgb "light-grey", \\
