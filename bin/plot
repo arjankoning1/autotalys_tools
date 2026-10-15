@@ -427,7 +427,7 @@ bin="${Thome%/}/bin/"
 exforbase=${EXFORTABLES_DIR:-${AUTOTALYS_HOME:+$AUTOTALYS_HOME/exfortables}}
 exforbase=${exforbase:-$HOME/exfortables}
 exphome="${exforbase%/}/${projnuc}"
-extrema=${Thome}bin/extrema
+extrema=${bin}extrema
 if [ $calchome == xxx ] ; then
 # calchome=${HOME}/drip/${projnuc}tables/
   calchome=$PWD/
