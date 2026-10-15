@@ -37,8 +37,6 @@ done
 #
 cd $autotalys 
 
-ln -sfn ~/libraries .
-
 echo "***** Installing for autotalys: BNL ENDF-utility-codes" 
 cd ENDF-utility-codes
 cat > install_ENDF-utility-codes.bash << EOI
