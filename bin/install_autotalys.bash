@@ -63,8 +63,8 @@ cd PREPRO
 
 # Fix EVALPLOT's Legendre-array dimension.
 sed '/^[[:space:]]*PARAMETER (MAXLEGE /s/120000/2400/' \
-  EVALPLOT/evalplot.h > EVALPLOT/evalplot.h.tmp
-mv EVALPLOT/evalplot.h.tmp EVALPLOT/evalplot.h
+  source/EVALPLOT/evalplot.h > source/EVALPLOT/evalplot.h.tmp
+mv source/EVALPLOT/evalplot.h.tmp source/EVALPLOT/evalplot.h
 
 cat > install_PREPRO.bash << EOI
 cd source
@@ -77,7 +77,6 @@ cd bin
 for executable in *; do
   ln -sfn "../PREPRO/bin/\$executable" "$bin/\$executable"
 done
-cd ..
 cd ..
 EOI
 chmod +x ./install_PREPRO.bash
