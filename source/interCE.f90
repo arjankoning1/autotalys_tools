@@ -24,8 +24,8 @@ program interCE
   character(len=3), dimension(nummt):: ext
   character(len=7), dimension(nummt):: reac
   character(len=132)                :: string
-  character(len=132)                :: valdir
-  character(len=132)                :: datafile
+  character(len=1024)                :: valdir
+  character(len=1024)                :: datafile
   character(len=132)                :: reaction
   integer                           :: istat
   integer                           :: Z
@@ -38,6 +38,7 @@ program interCE
   integer                           :: iL
   integer                           :: iR
   integer                           :: MT
+  integer                           :: envstat
   real, dimension(nummt, -1:2)      :: sig2200
   real, dimension(nummt, -1:2)      :: sigEzero
   real, dimension(nummt, -1:2)      :: avsigma
@@ -59,10 +60,14 @@ program interCE
 !
 ! Initialization
 !
-! Thome="${AUTOENDF_HOME:-$HOME}"
-! Thome="${Thome%/}"     # remove final slash if present
-! valdir=$Thome'/resonancetables/'
-  valdir = '/Users/koning/resonancetables/'
+  call get_environment_variable('RESONANCETABLES_DIR', valdir, status=envstat)
+
+  if (envstat /= 0 .or. len_trim(valdir) == 0) then
+    write(*,*) 'Error: RESONANCETABLES_DIR not defined'
+    stop 1
+  endif
+
+  if (valdir(len_trim(valdir):len_trim(valdir)) /= '/') valdir = trim(valdir)//'/'
   ext='   '
   ext(1)='tot'
   ext(2)='el'
