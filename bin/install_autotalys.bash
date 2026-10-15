@@ -59,7 +59,7 @@ echo
 cd $autotalys 
 
 echo "***** Installing for autotalys: PREPRO" 
-cd PREPRO/source
+cd PREPRO
 
 # Fix EVALPLOT's Legendre-array dimension.
 sed '/^[[:space:]]*PARAMETER (MAXLEGE /s/120000/2400/' \
@@ -67,6 +67,7 @@ sed '/^[[:space:]]*PARAMETER (MAXLEGE /s/120000/2400/' \
 mv EVALPLOT/evalplot.h.tmp EVALPLOT/evalplot.h
 
 cat > install_PREPRO.bash << EOI
+cd source
 make clean
 make
 make install graphics=yes
@@ -76,6 +77,7 @@ cd bin
 for executable in *; do
   ln -sfn "../PREPRO/bin/\$executable" "$bin/\$executable"
 done
+cd ..
 cd ..
 EOI
 chmod +x ./install_PREPRO.bash
