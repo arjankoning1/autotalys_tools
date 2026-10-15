@@ -2,7 +2,7 @@
 #
 #
 echo
-echo "       Autotalys-2.25 (Version October 14 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
+echo "       Autotalys-2.25 (Version October 15 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
 echo
 echo $0 $@
 echo
@@ -3672,8 +3672,8 @@ if [ $plot -eq 1 ] ; then
   else
     expflag=Eonly
   fi
-  if [ $endf -eq 1 ] ; then
-    pflags="print -calc ${nucpath}tables/ -newpath ${endfpath[1]}tables/ $uncflag $expflag subentry quality"
+  if [ $endf -eq 1 ]; then
+    pflags="print -calc ${nucpath}tables/ -newpath ${endfpath[1]}tables/ -newext $libext -liblabel $libname $uncflag $expflag subentry quality"
   else
     pflags="print -calc ${nucpath}tables/ talys $uncflag $expflag subentry quality"
   fi
