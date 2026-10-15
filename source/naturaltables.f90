@@ -25,14 +25,17 @@
   integer, parameter                :: numab=10
   logical                           :: lexist
   logical                           :: flagunc
-  character(len=132)                :: basedir
-  character(len=132)                :: abdir
-  character(len=132)                :: abfile
-  character(len=132)                :: nucfile
-  character(len=132)                :: key
-  character(len=132)                :: libdir
-  character(len=132)                :: natfile
-  character(len=132)                :: headdir
+  character(len=1024) :: talys_dir
+  character(len=1024) :: libraries_dir
+  character(len=1024) :: autotalys_home
+  character(len=1024) :: home_dir
+  character(len=1024) :: abdir
+  character(len=1024) :: abfile
+  character(len=1024) :: nucfile
+  character(len=1024) :: libdir
+  character(len=132)  :: key
+  character(len=132)  :: natfile
+  character(len=132)  :: headdir
   character(len=132)                :: line(100)
   character(len=30)                 :: MTfile,headfile
   character(len=20)                 :: lib     
@@ -93,25 +96,70 @@
     'Lu', 'Hf', 'Ta', 'W ', 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg', 'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn', 'Fr', 'Ra', 'Ac', 'Th', &
     'Pa', 'U ', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm', 'Md', 'No', 'Lr', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds', &
     'Rg', 'Cn', 'Nh', 'Fl', 'Mc', 'Lv', 'Ts', 'Og', 'B9', 'C0', 'C1', 'C2', 'C3', 'C4'/)
-! Thome="${AUTOENDF_HOME:-$HOME}"
-! Thome="${Thome%/}"     # remove final slash if present
-! basedir=$Thome'/tools/autotalys/'
-  basedir = '/Users/koning/tools/autotalys/'
+!
+! Determine TALYS and nuclear data library directories at runtime.
+!
+  talys_dir = ''
+  libraries_dir = ''
+  autotalys_home = ''
+  home_dir = ''
+
+!
+! TALYS_DIR has priority. Otherwise use AUTOTALYS_HOME.
+!
+  call get_environment_variable('TALYS_DIR', talys_dir)
+
+  if (len_trim(talys_dir) == 0) then
+    call get_environment_variable('AUTOTALYS_HOME', autotalys_home)
+    if (len_trim(autotalys_home) > 0) then
+      talys_dir = trim(autotalys_home)//'/talys'
+    endif
+  endif
+
+  if (len_trim(talys_dir) == 0) then
+    write(*,*) 'NATURALTABLES error: TALYS_DIR not defined'
+    stop 1
+  endif
+
+!
+! Use LIBRARIES_DIR when defined, otherwise $HOME/libraries.
+!
+  call get_environment_variable('LIBRARIES_DIR', libraries_dir)
+
+  if (len_trim(libraries_dir) == 0) then
+    call get_environment_variable('HOME', home_dir)
+    if (len_trim(home_dir) > 0) then
+      libraries_dir = trim(home_dir)//'/libraries'
+    endif
+  endif
+
+  if (len_trim(libraries_dir) == 0) then
+    write(*,*) 'NATURALTABLES error: LIBRARIES_DIR not defined'
+    stop 1
+  endif
+
+!
+! Ensure trailing slashes.
+!
+  i = len_trim(talys_dir)
+  if (talys_dir(i:i) /= '/') talys_dir = trim(talys_dir)//'/'
+
+  i = len_trim(libraries_dir)
+  if (libraries_dir(i:i) /= '/') libraries_dir = trim(libraries_dir)//'/'
 !
 ! Read element
 !
   read(*,'(a1)') proj
   read(*,'(a2)') el
   read(*,'(a20)') lib
-  libdir=trim(basedir)//'../../libraries/'
+  libdir = trim(libraries_dir)
   do iz=1,numZ
     if (el(1:2) == nuc(iz)(1:2)) then
       Z = iz
       exit
     endif
   enddo
-  abdir = trim(basedir)//'../../talys/structure/abundance/'
-  abfile = trim(abdir)//trim(nuc(Z))//'.abun'
+  abdir = trim(talys_dir)//'structure/abundance/'
   inquire (file=abfile,exist=lexist)
   if (.not.lexist) stop
   open (unit=1,status='old',file=abfile)
@@ -146,6 +194,7 @@
       do ia = Abeg, Aend
         do iso = -1, 2
           if (MT.lt.851.and.iso.gt.-1) cycle
+          Nen = 0
           e = 0.
           xs = 0.
           xslow = 0.
@@ -184,6 +233,7 @@
             if (.not.lexist) cycle
             open (unit=2,status='old',file=nucfile)
             jheader = 0  
+            Ncol = 0  
             j = 1        
             do           
               read(2, '(a)', iostat = istat) line(j) 
@@ -231,9 +281,9 @@
             endif
             close(2)
             Nen(k)=i-1
-            if (nen(k) > Nen0) then
+            if (Nen(k) > Nen0) then
               kmax=k
-              Nen0=nen(k)
+              Nen0=Nen(k)
             endif
           enddo
           if (Nen0 == 0) cycle
