@@ -30,11 +30,14 @@ program driplist
   character(len=3)   :: Achar                    !
   character(len=7)   :: abchar                   ! help variable
   character(len=7)   :: levelchar                ! help variable
-  character(len=132) :: abfile                   ! isotopic abundance file
-  character(len=132) :: levelfile                ! discrete level file
-  character(len=132) :: exphome                  !
-  character(len=132) :: basedir                  ! home directory
-  character(len=132) :: nucdir                   !
+  character(len=1024) :: abfile
+  character(len=1024) :: levelfile
+  character(len=1024) :: nucdir
+  character(len=1024) :: talys_dir
+  character(len=1024) :: exfor_dir
+  character(len=1024) :: autotalys_home
+  integer             :: envstat
+  integer             :: n
   integer            :: A(numnuc)                ! mass number of target nucleus
   integer            :: AA                       ! mass number of residual nucleus
   integer            :: Atemp                    !
@@ -142,10 +145,47 @@ program driplist
   ab = 0.
   tau = 0.
   Nrand = 10
-! Thome="${AUTOENDF_HOME:-$HOME}"
-! Thome="${Thome%/}"     # remove final slash if present
-! basedir=$Thome'/tools/autotalys/'
-  basedir = '/Users/koning/tools/autotalys/'
+!
+! Determine data paths at runtime.
+! Individual environment variables take precedence over AUTOTALYS_HOME.
+!
+  autotalys_home = ''
+  talys_dir = ''
+  exfor_dir = ''
+
+  call get_environment_variable('AUTOTALYS_HOME', autotalys_home)
+
+  call get_environment_variable('TALYS_DIR', talys_dir, status=envstat)
+  if (envstat /= 0 .or. len_trim(talys_dir) == 0) then
+    if (len_trim(autotalys_home) > 0) then
+      talys_dir = trim(autotalys_home)//'/talys'
+    endif
+  endif
+
+  if (len_trim(talys_dir) == 0) then
+    write(*,*) 'DRIPLIST error: TALYS_DIR is not defined'
+    stop 1
+  endif
+
+  call get_environment_variable('EXFORTABLES_DIR', exfor_dir, status=envstat)
+  if (envstat /= 0 .or. len_trim(exfor_dir) == 0) then
+    if (len_trim(autotalys_home) > 0) then
+      exfor_dir = trim(autotalys_home)//'/exfortables'
+    endif
+  endif
+
+!
+! Remove trailing slashes.
+!
+  n = len_trim(talys_dir)
+  if (n > 1) then
+    if (talys_dir(n:n) == '/') talys_dir = talys_dir(:n-1)
+  endif
+
+  n = len_trim(exfor_dir)
+  if (n > 1) then
+    if (exfor_dir(n:n) == '/') exfor_dir = exfor_dir(:n-1)
+  endif
 !
 ! ******************* Set order of isotopes ****************************
 !
@@ -173,7 +213,7 @@ program driplist
 ! Get the isotopes from the abundance table
 !
       abchar = trim(nuc(iz))//'.abun'
-      abfile = trim(basedir)//'../../talys/structure/abundance/'//abchar
+      abfile = trim(talys_dir)//'/structure/abundance/'//abchar
       inquire (file = abfile, exist = lexist)
       if ( .not. lexist) cycle
       open (unit = 1, status = 'old', file = abfile)
@@ -249,7 +289,7 @@ program driplist
 ! Skip natural isotopes, they have been stored already.
 !
           levelchar = trim(nuc(iz))//'.lev '
-          levelfile = trim(basedir)//'../../talys/structure/levels/exp/'// levelchar
+          levelfile = trim(talys_dir)//'/structure/levels/exp/'//levelchar
           inquire (file = levelfile, exist = lexist)
           if  (.not. lexist) cycle
           open (unit = 3, status = 'old', file = levelfile)
@@ -346,19 +386,21 @@ program driplist
     if (Liso(i) == 10) isochar(i) = 'v'
   enddo
 !
-! Check existence of experimental data
+! Check existence of experimental data in EXFORTABLES.
+! EXFORTABLES is optional.
 !
-  exphome = trim(basedir)//'../../libraries/n/'
-  do i = 1, numiso
-    write(Achar(1:3), '(i3.3)') A(i)
-    nucdir = trim(exphome) //trim(nuclide(i)) //Achar // trim(isochar(i))//'/'//'exfor/xs/xslist'
-    inquire (file = nucdir, exist = lexist)
-    if (lexist) then
-      expchar(i) = '_E'
-    else
-      expchar(i) = '  '
-    endif
-  enddo
+  expchar = '  '
+
+  if (len_trim(exfor_dir) > 0) then
+    do i = 1, numiso
+      write(Achar(1:3), '(i3.3)') A(i)
+
+      nucdir = trim(exfor_dir)//'/n/'// trim(nuclide(i))//Achar//trim(isochar(i))//'/xs/xslist'
+
+      inquire (file=nucdir, exist=lexist)
+      if (lexist) expchar(i) = '_E'
+    enddo
+  endif
 !
 ! ************ Set number of random runs *******************************
 !
