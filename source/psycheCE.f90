@@ -19,8 +19,8 @@ program psycheCE
   logical                           :: lexist
   character(len=132)                :: string
   character(len=8), dimension(numtype) :: stringval
-  character(len=132)                :: valdir
-  character(len=132)                :: datafile
+  character(len=1024)                :: valdir
+  character(len=1024)                :: datafile
   integer                           :: istat
   integer                           :: Z
   integer                           :: A
@@ -35,6 +35,7 @@ program psycheCE
   integer                           :: type
   integer                           :: MT
   integer                           :: Riso
+  integer                           :: envstat
   real, dimension(numtype)          :: val
   real                              :: D0
   real                              :: D1
@@ -53,10 +54,14 @@ program psycheCE
 !
 ! Initialization
 !
-! Thome="${AUTOENDF_HOME:-$HOME}"
-! Thome="${Thome%/}"     # remove final slash if present
-! valdir=$Thome'/resonancetables/'
-  valdir = '/Users/koning/resonancetables/'
+  call get_environment_variable('RESONANCETABLES_DIR', valdir, status=envstat)
+
+  if (envstat /= 0 .or. len_trim(valdir) == 0) then
+    write(*,*) 'Error: RESONANCETABLES_DIR not defined'
+    stop 1
+  endif
+
+  if (valdir(len_trim(valdir):len_trim(valdir)) /= '/') valdir = trim(valdir)//'/'
   Liso = 0
   D0 = 0.
   gamgam0 = 0.
@@ -65,7 +70,7 @@ program psycheCE
   gamgam1 = 0.
   S1 = 0.
   stringval(1) = 'D0'
-  stringval(2) = 'gamgam'
+  stringval(2) = 'gamgam0'
   stringval(3) = 'S0'
   stringval(4) = 'D1'
   stringval(5) = 'gamgam1'
