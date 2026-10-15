@@ -3,7 +3,7 @@
 # Script to plot TALYS and evaluated data libraries with 
 # experimental data using Gnuplot, reaction by reaction
 #
-# Arjan Koning, October 6 2026
+# Arjan Koning, October 15 2026
 # Cosmetic improvement by Natalia Dzysiuk in 2017
 #
 ################################################################################
@@ -162,6 +162,7 @@ libshome=xxx
 newpath=xxx
 calclabel='TALYS'
 liblabel='NEW'
+newext='tendl'
 tplot=0
 #
 ################################################################################
@@ -184,6 +185,7 @@ while [ $# -ge 5 ] ; do
     -calc)  calchome=$6;shift 2;;
     -libs)  libshome=$6;shift 2;;
     -newpath)  newpath=$6;shift 2;;
+    -newext) newext=$6;shift 2;;
     -calclabel)  calclabel=$6;shift 2;;
     -liblabel)  liblabel=$6;shift 2;;
     -num)  num=$6;shift 2;;
@@ -422,19 +424,31 @@ xsmax=1000
 projnuc=${proj}'/'${elem}${mass}'/'
 Thome=${AUTOTALYS_TOOLS_DIR}/
 bin=$Thome'bin/'
-libdir=libraries
 exphome=${HOME}/exfortables/${projnuc}
-if [ ! -d $exphome ] ; then
-  exphome=${HOME}/${libdir}/${projnuc}exfor/
-fi
-weightsfile=${HOME}/tasman/misc/score.tab
 extrema=${Thome}bin/extrema
 if [ $calchome == xxx ] ; then
 # calchome=${HOME}/drip/${projnuc}tables/
   calchome=$PWD/
 fi
-if [ $libshome == xxx ] ; then
-  libshome=${HOME}/${libdir}/
+calchome="${calchome%/}/"
+
+# External evaluated libraries: optional
+if [[ $libshome == xxx ]]; then
+  libshome="${LIBRARIES_DIR:-$HOME/libraries}"
+fi
+libshome="${libshome%/}/"
+
+# New evaluation: passed through -newpath
+if [[ $newpath != xxx ]]; then
+  newpath="${newpath%/}/"
+fi
+
+# TASMAN scoring information
+weightsfile="${TASMAN_DIR:-$HOME/tasman}/misc/score.tab"
+
+# EXFOR required only for Eonly
+if [[ ! -d "$exphome" && $expflag -eq 1 ]]; then
+  exit 0
 fi
 #
 # Test for existence of paths
@@ -445,10 +459,6 @@ if [ ! -d $exphome ] && [ $expflag -eq 1 ] ; then
 fi
 if [ ! -d $calchome ] && [ $talys -eq 1 ] ; then
   echo $calchome "does not exist. Install or use notalys flag"
-  exit
-fi
-if [ ! -d $libshome ] ; then
-  echo $libshome "does not exist"
   exit
 fi
 #
@@ -958,21 +968,15 @@ if [ $tendlprev -eq 1 ] ; then
       lw[$k]=$width
       lc[$k]="orange" # orange
     fi
-#No uncertainty band for previous TENDL version
-#   if [ $uncband -eq 1 ] ; then
-#     grep 'columns: 4' $tendlprevfile  >>  /dev/null
-#     if [ $? -eq 0 ] ; then
-#       unc[$k]=1
-#     fi
-#   fi
   fi
 fi
-if [ $new -eq 1 ] ; then
-  newfile=${newpath}${endfgroup}.tendl
-  if [ ! -e $newfile ] ; then
-    newfile=${newpath}${endf}.tendl
+if [[ $new -eq 1 && $newpath != xxx ]]; then
+  newfile="${newpath}${endfgroup}.${newext}"
+
+  if [[ ! -s "$newfile" ]]; then
+    newfile="${newpath}${endf}.${newext}"
   fi
-  if [ -e $newfile ] ; then
+  if [[ -s "$newfile" ]]; then
     k=$(( k + 1 ))
     file[$k]=$newfile
     lib[$k]=$liblabel
