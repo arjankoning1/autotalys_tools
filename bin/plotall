@@ -78,8 +78,11 @@ else
 fi
 nuclide=${proj}'/'${elem}${mass}'/'
 #exphome=${Thome}/newbase/$nuclide
-exphome=${LIBRARIES_DIR}/libraries/${nuclide}/exfor/
-rpdir=$exphome'residual/'
+exforbase=${EXFORTABLES_DIR:-${AUTOTALYS_HOME:+$AUTOTALYS_HOME/exfortables}}
+exforbase=${exforbase:-$HOME/exfortables}
+
+exphome="${exforbase%/}/${nuclide}"
+rpdir="${exphome}residual/"
 #
 # Run plot commands
 #
