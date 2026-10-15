@@ -941,6 +941,7 @@ export BNL_DIR="$AUTOTALYS_HOME/ENDF-utility-codes"
 export FUDGE_DIR="$AUTOTALYS_HOME/fudge"
 export AUTOTALYS_TOOLS_DIR="$AUTOTALYS_HOME/autotalys_tools"
 export BEST_DIR="$TALYS_DIR/structure/best"
+export AUTONORM_DIR="$AUTOTALYS_HOME/autonorm"
 export EXFORTABLES_DIR="${EXFORTABLES_DIR:-$AUTOTALYS_HOME/exfortables}"
 export LIBRARIES_DIR="${LIBRARIES_DIR:-$AUTOTALYS_HOME/libraries}"
 export PATH="$AUTOTALYS_HOME/bin:$PATH"
@@ -958,6 +959,7 @@ echo "BNL_DIR " $BNL_DIR
 echo "FUDGE_DIR " $FUDGE_DIR
 echo "AUTOTALYS_TOOLS_DIR " $AUTOTALYS_TOOLS_DIR
 echo "BEST_DIR " $BEST_DIR
+echo "AUTONORM_DIR " $AUTONORM_DIR
 echo "EXFORTABLES_DIR " $EXFORTABLES_DIR
 echo "LIBRARIES_DIR " $LIBRARIES_DIR
 echo "PATH " $PATH
@@ -988,7 +990,7 @@ interCE=$bin'interCE'
 energypath=${AUTOTALYS_HOME}'/tefal/misc/'
 taresdef=${AUTOTALYS_HOME}'/tefal/misc/background'
 librariespath="${LIBRARIES_DIR%/}/"
-bestpath=${BEST_DIR}'/'
+bestpath="${TALYS_DIR%/}/structure/"
 resonancepath=${AUTOTALYS_HOME}'/resbase/'
 nubarpath=${AUTOTALYS_HOME}'/nubarbase/'
 fnspath=${AUTOTALYS_HOME}'/fnsbase/'
