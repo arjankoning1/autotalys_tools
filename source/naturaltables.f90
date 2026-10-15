@@ -160,8 +160,13 @@
     endif
   enddo
   abdir = trim(talys_dir)//'structure/abundance/'
+  abfile = trim(abdir)//trim(nuc(Z))//'.abun'
+
   inquire (file=abfile,exist=lexist)
-  if (.not.lexist) stop
+  if (.not.lexist) then
+    write(*,*) 'NATURALTABLES error: abundance file missing: ', trim(abfile)
+    stop 1
+  endif
   open (unit=1,status='old',file=abfile)
   ab = 0.
   Nab=0
