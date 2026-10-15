@@ -1348,7 +1348,7 @@ EOI
 if [ "$legend" == left ]; then
   echo "set key left top reverse" >> "$pltfile"
 else
-  echo 'set key right top spacing 1.5 font "Times-Roman, 45"' >> "$pltfile"
+  echo 'set key right top' >> "$pltfile"
 fi
 if [ $print -eq 1 ] ; then
   cat >> $pltfile << EOI
