@@ -2136,8 +2136,10 @@ EOI
       if [ -d $librariespath ] ; then
         gmass=`expr $mass - 1`
         nucg=$element$gmass
-        cp ${librariespath}n/${nucg}/tendl.2025/files/n-${nucg}.tendl.2025 .
-        cat >> gpf.inp << EOI
+        worldfile="${librariespath}n/${nucg}/tendl.2025/files/n-${nucg}.tendl.2025"
+        if [ -f "$worldfile" ]; then
+          cp "$worldfile" .
+          cat >> gpf.inp << EOI
 #
 # Adoption of fission neutron observables from corresponding neutron-induced reaction
 #
@@ -2147,6 +2149,9 @@ adopt  1 456 n-${nucg}.tendl.2025
 adopt  5 18  n-${nucg}.tendl.2025
 adopt  5 455 n-${nucg}.tendl.2025
 EOI
+        else
+          echo "Warning: neutron TENDL file not available: $worldfile"
+        fi
       else
         echo "Warning: libraries/ not available, fission neutron observables not used"
       fi
