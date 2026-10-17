@@ -2,7 +2,7 @@
 #
 #
 echo
-echo "       Autotalys-2.25 (Version October 15 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
+echo "       Autotalys-2.25 (Version October 17 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
 echo
 echo $0 $@
 echo
@@ -64,6 +64,62 @@ echo
 echo "### A Input and Initialization"
 ################################################################################
 #
+# AUTOTALYS root
+#
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export AUTOTALYS_HOME="$(cd "$script_dir/.." && pwd)"
+#
+# TALYS-related software
+#
+export TALYS_DIR="$AUTOTALYS_HOME/talys"
+export TEFAL_DIR="$AUTOTALYS_HOME/tefal"
+export TASMAN_DIR="$AUTOTALYS_HOME/tasman"
+export AUTONORM_DIR="$AUTOTALYS_HOME/autonorm"
+export AUTOENDF_DIR="$AUTOTALYS_HOME/autoendf"
+export AUTOTALYS_TOOLS_DIR="$AUTOTALYS_HOME/autotalys_tools"
+
+#
+# External processing software
+#
+export PREPRO_DIR="$AUTOTALYS_HOME/PREPRO"
+export NJOY_DIR="$AUTOTALYS_HOME/NJOY2016"
+export BNL_DIR="$AUTOTALYS_HOME/ENDF-utility-codes"
+export FUDGE_DIR="$AUTOTALYS_HOME/fudge"
+
+#
+# Nuclear data
+#
+export BEST_DIR="$TALYS_DIR/structure/best"
+export RESONANCETABLES_DIR="$AUTOTALYS_HOME/resonancetables"
+export EXFORTABLES_DIR="$AUTOTALYS_HOME/exfortables"
+export LIBRARIES_DIR="${LIBRARIES_DIR:-$HOME/libraries}"
+#
+# Executables
+#
+export PATH="$AUTOTALYS_HOME/bin:$PATH"
+#
+# Output of environment variables
+#
+echo
+echo "The following are local settings for this autotalys run only"
+echo
+echo "AUTOTALYS_HOME " $AUTOTALYS_HOME
+echo "TALYS_DIR " $TALYS_DIR
+echo "TEFAL_DIR " $TEFAL_DIR
+echo "TASMAN_DIR " $TASMAN_DIR
+echo "AUTOENDF_DIR " $AUTOENDF_DIR
+echo "PREPRO_DIR " $PREPRO_DIR
+echo "NJOY_DIR " $NJOY_DIR
+echo "BNL_DIR " $BNL_DIR
+echo "FUDGE_DIR " $FUDGE_DIR
+echo "AUTOTALYS_TOOLS_DIR " $AUTOTALYS_TOOLS_DIR
+echo "BEST_DIR " $BEST_DIR
+echo "AUTONORM_DIR " $AUTONORM_DIR
+echo "EXFORTABLES_DIR " $EXFORTABLES_DIR
+echo "RESONANCETABLES_DIR " $RESONANCETABLES_DIR
+echo "LIBRARIES_DIR " $LIBRARIES_DIR
+echo "PATH " $PATH
+echo
 ################################################################################
 echo "  # A.1 Output of all options"
 ################################################################################
@@ -928,48 +984,6 @@ echo "  # A.6 Set path names and executables"
 ################################################################################
 #
 ###
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-AUTOTALYS_HOME="$(cd "$script_dir/.." && pwd)"
-export AUTOTALYS_HOME
-export TALYS_DIR="$AUTOTALYS_HOME/talys"
-export TEFAL_DIR="$AUTOTALYS_HOME/tefal"
-export TASMAN_DIR="$AUTOTALYS_HOME/tasman"
-export AUTOENDF_DIR="$AUTOTALYS_HOME/autoendf"
-export PREPRO_DIR="$AUTOTALYS_HOME/PREPRO"
-export NJOY_DIR="$AUTOTALYS_HOME/NJOY2016"
-export BNL_DIR="$AUTOTALYS_HOME/ENDF-utility-codes"
-export FUDGE_DIR="$AUTOTALYS_HOME/fudge"
-export AUTOTALYS_TOOLS_DIR="$AUTOTALYS_HOME/autotalys_tools"
-export BEST_DIR="$TALYS_DIR/structure/best"
-export AUTONORM_DIR="$AUTOTALYS_HOME/autonorm"
-export EXFORTABLES_DIR="${EXFORTABLES_DIR:-$AUTOTALYS_HOME/exfortables}"
-export RESONANCETABLES_DIR="$AUTOTALYS_HOME/resonancetables"
-export LIBRARIES_DIR="${LIBRARIES_DIR:-$HOME/libraries}"
-export PATH="$AUTOTALYS_HOME/bin:$PATH"
-echo
-echo "The following are local settings for this autotalys run only"
-echo
-echo "AUTOTALYS_HOME " $AUTOTALYS_HOME
-echo "TALYS_DIR " $TALYS_DIR
-echo "TEFAL_DIR " $TEFAL_DIR
-echo "TASMAN_DIR " $TASMAN_DIR
-echo "AUTOENDF_DIR " $AUTOENDF_DIR
-echo "PREPRO_DIR " $PREPRO_DIR
-echo "NJOY_DIR " $NJOY_DIR
-echo "BNL_DIR " $BNL_DIR
-echo "FUDGE_DIR " $FUDGE_DIR
-echo "AUTOTALYS_TOOLS_DIR " $AUTOTALYS_TOOLS_DIR
-echo "BEST_DIR " $BEST_DIR
-echo "AUTONORM_DIR " $AUTONORM_DIR
-echo "EXFORTABLES_DIR " $EXFORTABLES_DIR
-echo "RESONANCETABLES_DIR " $RESONANCETABLES_DIR
-echo "LIBRARIES_DIR " $LIBRARIES_DIR
-echo "PATH " $PATH
-echo
-###
-#Thome="${AUTOTALYS_HOME:-$HOME}"
-#Thome="${AUTOTALYS_HOME}"
-#Thome="${Thome%/}"     # remove final slash if present
 bin=${AUTOTALYS_HOME}'/bin/'
 talys=$bin$talysversion$extension
 tefal=$bin$tefalversion$extension
