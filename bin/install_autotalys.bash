@@ -169,6 +169,58 @@ else
   echo "WARNING: Continuing without FUDGE."
 fi
 
+install_openmc() (
+  local conda_exe="${OPENMC_CONDA:-}"
+  local env_name="${OPENMC_ENV:-openmc}"
+  local candidate=""
+
+  if [[ -n "$conda_exe" ]]; then
+    # An override may be an absolute path or a command on PATH.
+    conda_exe="$(command -v "$conda_exe" || true)"
+  else
+    conda_exe="$(command -v conda || true)"
+    if [[ -z "$conda_exe" && -n "${CONDA_EXE:-}" && -x "$CONDA_EXE" ]]; then
+      conda_exe="$CONDA_EXE"
+    fi
+    if [[ -z "$conda_exe" ]]; then
+      for candidate in "$HOME/miniforge3/bin/conda" \
+                       "$HOME/miniconda3/bin/conda" \
+                       "$HOME/anaconda3/bin/conda"; do
+        if [[ -x "$candidate" ]]; then
+          conda_exe="$candidate"
+          break
+        fi
+      done
+    fi
+  fi
+
+  if [[ -z "$conda_exe" || ! -x "$conda_exe" ]]; then
+    echo "WARNING: Conda not found; install Miniforge or set OPENMC_CONDA."
+    return 1
+  fi
+
+  echo "Using Conda: $conda_exe"
+  echo "OpenMC environment: $env_name"
+
+  if ! "$conda_exe" run -n "$env_name" python -c \
+    'import openmc, matplotlib, numpy, shutil; assert shutil.which("openmc")' \
+    >/dev/null 2>&1; then
+    if "$conda_exe" env list | awk -v name="$env_name" '$1 == name { found = 1 } END { exit !found }'; then
+      "$conda_exe" install -y -n "$env_name" -c conda-forge \
+        openmc matplotlib numpy || return 1
+    else
+      "$conda_exe" create -y -n "$env_name" -c conda-forge \
+        openmc matplotlib numpy || return 1
+    fi
+  fi
+
+  if ! "$conda_exe" run -n "$env_name" python -c \
+    'import openmc, matplotlib, numpy, shutil; assert shutil.which("openmc")' \
+    >/dev/null 2>&1; then
+    echo "WARNING: OpenMC verification failed in Conda environment $env_name."
+    return 1
+  fi
+
   # Record the selected conda environment for autoopenmc.
   # This file can be read by the autoopenmc wrapper.
   mkdir -p "$autotalys/config"
