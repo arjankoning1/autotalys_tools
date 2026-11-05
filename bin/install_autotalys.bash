@@ -169,6 +169,23 @@ else
   echo "WARNING: Continuing without FUDGE."
 fi
 
+  # Record the selected conda environment for autoopenmc.
+  # This file can be read by the autoopenmc wrapper.
+  mkdir -p "$autotalys/config"
+
+  printf 'OPENMC_CONDA=%q\nOPENMC_ENV=%q\n' \
+    "$conda_exe" "$env_name" \
+    > "$autotalys/config/openmc.conf"
+
+  echo "OpenMC configuration written to config/openmc.conf"
+)
+
+if install_openmc; then
+  echo "OpenMC installation/check completed."
+else
+  echo "WARNING: Continuing without OpenMC."
+fi
+
 echo
 
 cd $autotalys 
