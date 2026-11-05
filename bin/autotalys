@@ -910,9 +910,6 @@ fi
 if [ $covar -eq 0 ] && [ $search -eq 0 ] ; then
   ntalys=0
 fi
-if [ $rescue -eq 1 ] ; then
-  auto=0
-fi
 if [ $sens -eq 1 ] ; then
   endf=0
   tables=0
