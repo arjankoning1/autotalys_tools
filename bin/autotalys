@@ -2,7 +2,7 @@
 #
 #
 echo
-echo "       Autotalys-2.25 (Version October 17 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
+echo "       Autotalys-2.25 (Version November 5 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
 echo
 echo $0 $@
 echo
@@ -466,6 +466,9 @@ if [ $# -eq 0 ] ; then
   echo "       -[no]mcnp "
   echo "                 Run MCNP with ACE file [default: -nomcnp]"
   echo
+  echo "       -[no]openmc "
+  echo "                 Run OpenMC with HDF5 file [default: -noopenmc]"
+  echo
   echo "       -[no]integral "
   echo "                 Calculation of integral effective cross section [default: -nointegral]"
   echo
@@ -523,6 +526,8 @@ if [ $# -eq 0 ] ; then
   echo "       NJOY      : Los Alamos processing program"
   echo "       autofudge : script to run the FUDGE codes"
   echo "       automcnp  : script to run MCNP"
+  echo "       autoopenmc: script to run OpenMC"
+  echo "       OpenMC    : Monte Carlo transport code"
   echo "       MCNP      : Los Alamos Monte Carlo transport program (not implemented)"
   echo
   echo "       The above requirement list depends of course on the particular use of Autotalys,"
@@ -610,6 +615,7 @@ fudge=1
 njoy=1
 purr=0
 mcnp=0
+openmc=0
 integral=0
 clean=0
 extension=
@@ -800,6 +806,8 @@ while [ $# -ge 1 ] ; do
     -nopurr)  purr=0;shift;;
     -mcnp)  mcnp=1;shift;;
     -nomcnp)  mcnp=0;shift;;
+    -openmc)  openmc=1;shift;;
+    -noopenmc)  openmc=0;shift;;
     -integral)  integral=1;shift;;
     -nointegral)  integral=0;shift;;
     -clean)  clean=1;shift;;
@@ -938,6 +946,7 @@ if [ $endf -eq 0 ] ; then
   prepro=0
   fudge=0
   mcnp=0
+  openmc=0
   njoy=0
   purr=0
 fi
@@ -949,6 +958,19 @@ if [ $runtalys -eq 0 ] ; then
 fi
 if [ $binsrand -eq 0 ] ; then
   binsrand=$bins
+fi
+if [ "$openmc" -eq 1 ]; then
+  if [ "$proj" != "n" ]; then
+    usage_error "-openmc currently supports neutron evaluations only"
+  fi
+
+  if [ "$endf" -ne 1 ]; then
+    usage_error "-openmc requires ENDF production"
+  fi
+
+  if [ "$sdefault" -ne 1 ]; then
+    usage_error "-openmc requires the default general-purpose ENDF file"
+  fi
 fi
 #
 ################################################################################
@@ -994,6 +1016,7 @@ autoprepro=$bin'autoprepro'
 autonjoy=$bin'autonjoy'
 autofudge=$bin'autofudge'
 automcnp=$bin'automcnp'
+autoopenmc=$bin'autoopenmc'
 mf1maker=$bin'mf1maker'
 endftables=$bin'endftables'
 plotall=$bin'plotall'
@@ -1098,6 +1121,7 @@ echo "  Run FUDGE:                           -fudge/-nofudge " $fudge
 echo "  Run NJOY:                              -njoy/-nonjoy " $njoy
 echo "  Use PURR:                              -purr/-nopurr " $purr
 echo "  Run MCNP:                              -mcnp/-nomcnp " $mcnp
+echo "  Run OpenMC:                        -openmc/-noopenmc " $openmc
 echo "  Random files for all ENDF:   -allrandom/-noallrandom " $allrandom
 echo "  Process files for all ENDF:-allprocess/-noallprocess " $allprocess
 echo "Weighted random runs:                -weight/-noweight " $weight
@@ -3542,6 +3566,27 @@ echo "  # E.2 NJOY for pendfN and ACE"
 $filename
 EOI
         fi
+      fi
+    fi
+#
+################################################################################
+# E.2a OpenMC transport validation
+################################################################################
+#
+    if [ "$openmc" -eq 1 ] && [ "$lib" -eq 1 ]; then
+      echo "*** Run OpenMC for $filename"
+      require_exe "$autoopenmc"
+
+      if [ ! -s "$filename" ]; then
+        die "OpenMC: ENDF file missing: $filename"
+      fi
+
+      if ! "$autoopenmc" \
+           -file "$PWD/$filename" \
+           -element "$element" \
+           -mass "$mass" \
+           -outdir "${pathname}openmc"; then
+        die "OpenMC validation failed for $filename"
       fi
     fi
 #
