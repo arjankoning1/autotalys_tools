@@ -3586,6 +3586,7 @@ EOI
            -file "$PWD/$filename" \
            -element "$element" \
            -mass "$mass" \
+           -no-photons \
            -outdir "${pathname}openmc"; then
         die "OpenMC validation failed for $filename"
       fi
