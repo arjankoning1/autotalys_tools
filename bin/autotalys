@@ -2,7 +2,7 @@
 #
 #
 echo
-echo "       Autotalys-2.25 (Version November 5 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
+echo "       Autotalys-2.25 (Version November 8 2026) (C) Copyright 2026 Arjan Koning All Rights Reserved"
 echo
 echo $0 $@
 echo
@@ -3574,7 +3574,7 @@ EOI
 # E.2a OpenMC transport validation
 ################################################################################
 #
-    if [ "$openmc" -eq 1 ] && [ "$lib" -eq 1 ]; then
+    if [ "$openmc" -eq 1 ] && [ "$lib" -eq 1 ] && [ $Liso -eq 0 ] ; then
       echo "*** Run OpenMC for $filename"
       require_exe "$autoopenmc"
 
@@ -3771,6 +3771,9 @@ if [ $clean -eq 1 ] ; then
     rm -f ecis* incident* xs* rp* xs* tr*
     rm -f gof.???? talys.out
     cd_or_die $curdir
+  fi
+  if [ $openmc -eq 1 ] ; then
+    rm -rf "${pathname}openmc/cache"
   fi
 else
   if [ $runtalys -eq 1 ] ; then
