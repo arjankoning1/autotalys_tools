@@ -1,0 +1,75 @@
+#!/bin/bash
+#
+#            allnuccheck (Version March 5 2023)"
+#            (C) Copyright 2023 Arjan Koning"
+#
+# Script to check diagnosis and output files of entire TENDL library
+#
+# Run from the TENDL production directory (e.g. tendl/), its check/
+# directory, or a projectile directory (e.g. tendl/n/).
+# Reports are written to tendl/check/.
+# Example: allnuccheck  (all projectiles)
+# Example: allnuccheck n (only neutrons)
+#
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+case "${PWD##*/}" in
+  check|n|g|p|d|t|h|a) tendlbase=$(cd -- .. && pwd) ;;
+  *) tendlbase=$PWD ;;
+esac
+checkdir="$tendlbase/check"
+mkdir -p -- "$checkdir" || exit 1
+cd -- "$checkdir" || exit 1
+tendlbase="$tendlbase/"
+part=0
+if [ $# -eq 1 ] ; then
+  part=$1
+  rm -f -- *-${part}.out no*-${part} *-${part}.ers *-${part}.diag
+else
+  rm -f -- *.out no* *.ers *.diag
+fi
+nuclides="$script_dir/nuc.sec"
+cp "$nuclides" nuclides || exit 1
+for proj in n g p d t h a; do
+  if [ $part != 0 ] && [ $proj != $part ] ; then
+    continue
+  fi
+  for nuc in `cat nuclides` ; do
+    nucbase=$tendlbase$proj'/'${nuc}/
+    if [ -e $nucbase ] ; then
+      checkbase=${nucbase}lib/endf*/check/
+      for code in checkr fizcon psyche prepro fudge njoy mcnp CE; do
+        echo $nucbase >> ${code}-${proj}.out
+        cat ${checkbase}*.${code} >> ${code}-${proj}.out
+        cat ${checkbase}${code}.ers >> ${code}-${proj}.ers
+      done
+      for type in talys tasman file pendf ace mcnp; do
+        cat ${nucbase}no${type} >> no${type}-${proj}
+      done
+      cat ${checkbase}NaNInf.ers >> NaNInf-${proj}.ers
+      ls -Fl ${checkbase}fudge.dif >> fudge-${proj}.out
+      endfbase=${nucbase}lib/endf/
+      ls -Fl ${endfbase}*.tendl >> tendl-${proj}.out
+      wc ${nucbase}nuclides >> tendl-${proj}.out
+      ls -Fl ${endfbase}*.tendl | wc >> tendl-${proj}.out
+      if [ $proj == n ] && [ -d  ${endfbase}random/ ] ; then
+        echo $endfbase >> random-${proj}.out
+        ls -Fl ${endfbase}random/*rand* | wc >> random-${proj}.out
+      fi
+    fi
+  done
+done
+echo " Totals "
+for proj in n g p d t h a; do
+  if [ $part != 0 ] && [ $proj != $part ] ; then
+    continue
+  fi
+  if [ -e tendl-${proj}.out ] ; then
+    f=${proj}.tendl
+    echo $f >> total-${proj}.out
+    grep $f tendl-${proj}.out | wc >> total-${proj}.out
+#   for code in checkr fizcon psyche fudge prepro njoy ; do
+#     echo "Diagnosis of output of " $code
+#     diag.$code ${code}-${proj}.out >> ${code}-${proj}.diag
+#   done
+  fi
+done

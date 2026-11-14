@@ -1,0 +1,543 @@
+#!/bin/bash
+#
+echo
+echo "       Autorochman-2.0 (Version October 8 2026)"
+echo "       (C) Copyright 2026 Arjan Koning"
+echo "       All Rights Reserved"
+echo
+echo $0 $@
+echo
+#
+#     autorochman - Script to run Dimitri Rochman's codes TARES, TAFIS and TANES 
+#                   for many nuclides and to move all results into 
+#                   appropriate directories
+#
+#           Set AUTOTALYS_ROOT if autotalys is installed outside ~/autotalys
+#
+################################################################################
+#
+#               STRUCTURE OF THE AUTOROCHMAN SCRIPT
+#
+# A Input and Initialization
+#   A.1 Output of all options
+#   A.2 Initialization (default values) of variables
+#   A.3 Read command line arguments
+#   A.4 Prevent unlogical option combinations
+#   A.5 Set nuclide symbols
+#   A.6 Set path names and executables
+#   A.7 Output of all flags and options
+#   A.8 Make path for target nuclide and create directories
+# B. Create standard TARES, TAFIS or TANES input file
+# C. TARES, TAFIS or TANES run
+# D. Clean up
+# E. Gzip files (optional)
+################################################################################
+#
+################################################################################
+### A Input and Initialization
+################################################################################
+#
+################################################################################
+# A.1 Output of all options
+################################################################################
+#
+if [ $# -eq 0 ] ; then
+  echo "AUTOROCHMAN                                                          AUTOROCHMAN"
+  echo
+  echo
+  echo
+  echo "NAME"
+  echo "      autorochman - Script to run Dimitri Rochman's codes TARES, TAFIS and TANES"
+  echo "                    for many nuclides and to move all results into "
+  echo "                    appropriate directories"
+  echo
+  echo "SYNOPSIS"
+  echo "       autorochman [option] [value]"
+  echo
+  echo "DESCRIPTION"
+  echo "       With AUTOROCHMAN, various tasks of TARES, TAFIS and TANES can be automated:"
+  echo
+  echo "       The tasks which can be performed are"
+  echo "         - Creation of an input file for TARES, TAFIS or TANES"
+  echo "         - Run TARES to produce resonance parameters + uncertainties"
+  echo "         - Run TAFIS to produce nubar + uncertainties"
+  echo "         - Run TANES to produce PFNS and DFNS + uncertainties"
+  echo "         - Store all x-y tables, ENDF-6 data libraries and other results"
+  echo "           in appropriate directories"
+  echo
+  echo "   Operation mode:"
+  echo
+  echo "       Usage: autorochman [option] [value]"
+  echo
+  echo "       Some option flags should be accompanied by a value"
+  echo
+  echo "       Examples: autorochman -element Nb -mass 93 "
+  echo
+  echo "       -element [element]    "
+  echo "                Element [default: -element Nb]"
+  echo
+  echo "       -mass [mass]   "
+  echo "             Mass number [default: -mass 93]"
+  echo
+  echo "       -Ltarget [Ltarget] "
+  echo "                Level number of target [default: -Ltarget 0]"
+  echo
+  echo "       -Liso [Liso]"
+  echo "             Isomeric number of target [default: -Liso 0]"
+  echo
+  echo "       -prefix [name] "
+  echo "                   Prefix for name of nuclide directories [default: not used]"
+  echo
+  echo "   Specific code"
+  echo
+  echo "       -[no]tares "
+  echo "                TARES calculation [default: -tares]"
+  echo
+  echo "       -[no]tafis "
+  echo "                TAFIS calculation [default: -notafis]"
+  echo
+  echo "       -[no]tanes "
+  echo "                TANES calculation [default: -notanes]"
+  echo
+  echo "   Code version"
+  echo
+  echo "       -taresversion [name]"
+  echo "                Specific TARES executable in bin/ [default: -version tares]"
+  echo
+  echo "       -tafisversion [name]"
+  echo "                Specific TAFIS executable in bin/ [default: -version tafis]"
+  echo
+  echo "       -tanesversion [name]"
+  echo "                Specific TANES executable in bin/ [default: -version tanes]"
+  echo
+  echo "       -library [name]"
+  echo "                Specific nuclear data library [default: blank]"
+  echo
+  echo "   Covariance calculation"
+  echo
+  echo "       -[no]covar "
+  echo "                  Total Monte Carlo and/or covariances [default: covar]"
+  echo
+  echo "       -nrandom [runs] "
+  echo "               Number of random runs [default: -nrandom 10]"
+  echo
+  echo "   System options"
+  echo
+  echo "       -[no]gzip "
+  echo "                 Gzip working directory [default: -nogzip]"
+  echo
+  echo "       -[no]scratch "
+  echo "                    /scratch directory for results [default: -noscratch]"
+  echo
+  echo "       -[no]clean "
+  echo "                  Clean up working directories [default: -noclean]"
+  echo
+  echo "       -[no]delete "
+  echo "                   Delete previous scratch/ directory [default: -delete]"
+  echo
+  echo "       -[no]replace "
+  echo "                   Replace previous nuclide directory [default: -replace]"
+  echo
+  echo "       -extension [extension] "
+  echo "                  Use an extension (e.g. C, 77) for TARES, TAFIS"
+  echo "                  and TANES executables [default: blank]"
+  echo
+  echo "REQUIRED"
+  echo "       Codes and scripts needed to run Autorochman:"
+  echo
+  echo "         TARES   : program for ENDF-6 resonance and covariance data"
+  echo "         TAFIS   : program for ENDF-6 nubar and covariance data"
+  echo "         TANES   : program for ENDF-6 PFNS/DFNS and covariance data"
+  echo
+  echo "AUTHOR"
+  echo "       Autorochman was written by Arjan Koning."
+  exit
+fi
+#
+################################################################################
+# A.2 Initialization (default values) of variables
+################################################################################
+#
+element=Nb
+mass=93
+Ltarget=0
+Liso=0
+prefix=
+runtares=1
+runtafis=0
+runtanes=0
+taresversion=tares
+tafisversion=tafis
+tanesversion=tanes
+library=
+covar=1
+nrandom=-1
+gzip=0
+scratch=0
+clean=0
+delete=1
+replace=1
+extension=
+#
+# Functions to reduce output of non-serious warnings
+#
+cpalways () {
+for i in $1 ; do
+  if [ -e $i ] ; then
+    cp -f $i  $2
+  fi
+done
+}
+#
+################################################################################
+# A.3 Read command line arguments
+################################################################################
+#
+while [ $# -ge 1 ] ; do
+  case $1 in
+    -element)  element=$2;shift 2;;
+    -mass)  mass=$2;shift 2;;
+    -Ltarget)  Ltarget=$2;shift 2;;
+    -Liso)  Liso=$2;shift 2;;
+    -prefix)  prefix=$2;shift 2;;
+    -tares)  runtares=1;shift;;
+    -notares)  runtares=0;shift;;
+    -tafis)  runtafis=1;shift;;
+    -notafis)  runtafis=0;shift;;
+    -tanes)  runtanes=1;shift;;
+    -notanes)  runtanes=0;shift;;
+    -taresversion)  taresversion=$2;shift 2;;
+    -tafisversion)  tafisversion=$2;shift 2;;
+    -tanesversion)  tanesversion=$2;shift 2;;
+    -library)  library=$2;shift 2;;
+    -covar)  covar=1;shift;;
+    -nocovar)  covar=0;shift;;
+    -nrandom)  nrandom=$2;shift 2;;
+    -gzip)  gzip=1;shift;;
+    -nogzip)  gzip=0;shift;;
+    -scratch)  scratch=1;shift;;
+    -noscratch)  scratch=0;shift;;
+    -clean)  clean=1;shift;;
+    -noclean)  clean=0;shift;;
+    -delete)  delete=1;shift;;
+    -nodelete)  delete=0;shift;;
+    -replace)  replace=1;shift;;
+    -noreplace)  replace=0;shift;;
+    -extension)  extension=$2;shift 2;;
+    *)  echo "Option [$1] invalid";exit;;
+  esac
+done
+#
+################################################################################
+# A.4 Prevent unlogical option combinations
+################################################################################
+#
+if [ $covar -eq 0 ] ; then
+  nrandom=0
+fi
+if [ $runtafis -eq 1 ] ; then
+  runtares=0
+fi
+if [ $runtanes -eq 1 ] ; then
+  runtares=0
+fi
+if [ $runtafis -eq 1 ] && [ $runtanes -eq 1 ] ; then
+  echo "STOP: Only one of TARES, TAFIS or TANES can be used";exit
+fi
+#
+################################################################################
+# A.5 Set nuclide symbols
+################################################################################
+#
+# Remove and add leading zeroes for mass
+#
+mass=`printf "%03d"  $(echo $mass | sed "s/^0*//;s/^$/0/")`
+#
+# Produce correct string for element: only first character uppercase
+#
+element=`echo $element | tr A-Z a-z | awk '{print toupper(substr($0,1,1))substr($0,2)}'`
+#
+# Isomeric symbol
+#
+isosym=
+Liso=`printf "%01d"  $(echo $Liso)`
+case $Liso in
+  1)  isosym='m';;
+  2)  isosym='n';;
+  3)  isosym='o';;
+  4)  isosym='p';;
+esac
+proj=n
+#
+################################################################################
+# A.6 Set path names and executables
+################################################################################
+#
+autotalys_root=${AUTOTALYS_ROOT:-"$HOME/autotalys"}
+bin="$autotalys_root/bin/"
+tares=$bin$taresversion
+tafis=$bin$tafisversion
+tanes=$bin$tanesversion
+if [ $runtares -eq 1 ] ; then
+  code=tares
+  executable=$tares
+fi
+if [ $runtafis -eq 1 ] ; then
+  code=tafis
+  executable=$tafis
+fi
+if [ $runtanes -eq 1 ] ; then
+  code=tanes
+  executable=$tanes
+fi
+#
+# Make /scratch/tendl directory and go there (optional)
+# We run autorochman either in the /scratch/tendl directory or in
+# the current directory.
+#
+if [ $scratch -eq 1 ] ; then
+  scratchdir=/scratch/tendl/$prefix$proj'-'$element$mass$isosym
+  if [ -d $scratchdir ] && [ $delete -eq 1 ] ; then
+    rm -rf $scratchdir
+  fi
+  mkdir -p $scratchdir
+  chmod a+rwx /scratch/tendl
+  cd $scratchdir
+fi
+#
+# Set current directory
+#
+curdir=`pwd`
+rm -f ${curdir}/no*
+#
+################################################################################
+# A.7 Output of all flags and options
+################################################################################
+#
+echo "Prefix for nuclide directory" $prefix
+echo "Code                        " $code
+echo "Covariance file             " $covar
+echo "Number of random runs       " $nrandom
+echo "Code name extension         " $extension
+echo "Gzipped results             " $gzip
+echo "Create scratch files        " $scratch
+echo "Clean up working dirs       " $clean
+echo "Remove scratch dir          " $delete
+echo "Replace previous nuclide dir" $replace
+nrandominp=$nrandom
+if [ $nrandominp -eq -1 ] ; then
+  nrandom=10
+else
+  nrandom=$nrandominp
+fi
+#
+# Output for nuclide under consideration
+#
+echo
+echo "### Nuclide ###"
+echo "element             " $element
+echo "mass                " $mass
+echo "Ltarget             " $Ltarget
+echo "Liso                " $Liso
+if [ $covar -eq 1 ] ; then
+  echo "Random runs         " $nrandom
+fi
+echo
+#
+################################################################################
+# A.8 Make path for target nuclide and create directories
+################################################################################
+#
+echo "*** Create subdirectories and input files"
+massstring=$mass
+if [ $Liso -gt 0 ] ; then
+  massstring=$mass$isosym
+fi
+nuclide=$element$massstring
+projnuc=$proj'-'$nuclide
+nucpath=$curdir'/'$nuclide'/'
+if [ -d $nucpath ] && [ $replace -eq 0 ] ; then
+  continue
+fi
+#
+# Create directory for target nuclide
+#
+if [ -d $nucpath ] ; then
+  rm -rf $nucpath
+fi
+mkdir -p $nucpath
+#
+# Create directory to store information
+#
+inppath=$nucpath'input/'
+mkdir -p $inppath
+filespath=$nucpath'files/'
+mkdir -p $filespath
+if [ $covar -eq 1 ] ; then
+  randompath=$nucpath'random/'
+  mkdir -p $randompath
+fi
+workpath=$nucpath'work/'
+mkdir -p $workpath
+cd $workpath
+#
+################################################################################
+# B. Create standard head of input file
+################################################################################
+#
+A=`echo $mass | sed "s/^0*//;s/^$/0/"`
+cat > head.inp << EOI
+#
+# Input file generated by Autorochman
+#
+isotope    $element
+mass       $A
+EOI
+#
+# More specific input files
+#
+cat head.inp > ${code}.inp
+if [ $code == tares ] ; then
+  cat >> ${code}.inp << EOI
+output     $projnuc
+isomer     $Liso
+EOI
+  if [ $covar -eq 1 ] ; then
+    cat >> ${code}.inp << EOI
+mf32mf33   y
+nbrRandom  $nrandom
+EOI
+  fi
+  if [ ! -z "$library" ] ; then
+    cat >> ${code}.inp << EOI
+library     $library
+EOI
+  fi
+else
+  cat >> ${code}.inp << EOI
+random     $nrandom
+EOI
+fi
+#
+# Add possible 'best' files for TAFIS and TANES
+#
+bestdir="$autotalys_root/talys/structure/best/$nuclide/"
+if [ $code == tafis ] ; then
+  if [ -e "${bestdir}${projnuc}.tafis" ] ; then
+    tafislib=`cat "${bestdir}${projnuc}.tafis"`
+    if [ $tafislib == endfb8.1 ] ; then
+      tafislib=endfb8.0
+    fi
+    cat >> ${code}.inp << EOI
+normalization $tafislib
+EOI
+  fi
+fi
+if [ $code == tanes ] ; then
+  if [ -e "${bestdir}${projnuc}.tanes" ] ; then
+    taneslib=`cat "${bestdir}${projnuc}.tanes"`
+    if [ $taneslib == endfb8.1 ] ; then
+      taneslib=endfb8.0
+    fi
+    cat >> ${code}.inp << EOI
+library $taneslib
+EOI
+  fi
+fi
+#
+################################################################################
+# C. Run TARES, TAFIS or TANES
+################################################################################
+#
+# Run
+#
+"$executable" ${code}.inp >& ${code}.out
+cp ${code}.inp ${code}.out $inppath
+#
+# Move files
+#
+if [ $code == tares ] ; then
+  mf1file=${projnuc}.mf1
+# sed '/Plots of different cross sections/,$d' $mf1file > tmp
+# mv tmp ${projnuc}.mf1
+  mf2file=${projnuc}.mf2
+  mf32cfile=${projnuc}.mf32c
+  mf33file=${projnuc}.mf33
+  cp $mf1file $filespath
+  cp $mf2file $filespath
+  cp $mf32cfile $filespath
+  if [ $covar -eq 1 ] ; then
+    cp $mf33file $filespath
+  fi
+  for ext in mt103 mt107; do
+    mtfile=other.tares.${projnuc}.files/${projnuc}.$ext 
+    if [ -e $mtfile ] ; then
+      cp $mtfile $filespath
+      if [ $covar -eq 1 ] ; then
+        cp other.tares.${projnuc}.files/randomMF2/${projnuc}.${ext}.???? $randompath
+      fi
+    fi
+  done
+  cp ${projnuc}.tex $filespath
+  cp ${projnuc}.txt $filespath
+  if [ $covar -eq 1 ] ; then
+    cp other.tares.${projnuc}.files/randomMF2/${projnuc}.mf1* $randompath
+    cp other.tares.${projnuc}.files/randomMF2/${projnuc}.mf2* $randompath
+  fi
+fi
+if [ $code == tafis ] ; then
+  mt452file=${projnuc}.mt452
+  mt455file=${projnuc}.mt455
+  mt458file=${projnuc}.mt458
+  cp fission.mt452.0000 $filespath$mt452file
+  cp fission.mt455.0000 $filespath$mt455file
+  cp fission.mt458.0000 $filespath$mt458file
+  if [ $covar -eq 1 ] ; then
+    mf31file=${projnuc}.mf31
+    cp nubar.mf31 $filespath$mf31file
+    for (( irun=0; irun<=$nrandom; irun++ )) ; do
+      run=`printf "%04d"  $(echo $irun )`
+      mt452ranfile=$mt452file'.'$run
+      mt455ranfile=$mt455file'.'$run
+      mt458ranfile=$mt458file'.'$run
+      cp fission.mt452.$run $randompath$mt452ranfile
+      cp fission.mt455.$run $randompath$mt455ranfile
+      cp fission.mt458.$run $randompath$mt458ranfile
+    done
+  fi
+fi
+if [ $code == tanes ] ; then
+  mf5file=${projnuc}.mf5
+  mf5dfile=${projnuc}.delayed.mf5
+  cp fns.mf5.0000 $filespath$mf5file
+  cp fns.mf5.delayed.0000 $filespath$mf5dfile
+  if [ $covar -eq 1 ] ; then
+    mf35file=${projnuc}.mf35
+    cp fns.mf35 $filespath$mf35file
+    for (( irun=0; irun<=$nrandom; irun++ )) ; do
+      run=`printf "%04d"  $(echo $irun )`
+      mf5ranfile=$mf5file'.'$run
+      mf5dranfile=$mf5dfile'.'$run
+      cp fns.mf5.$run $randompath$mf5ranfile
+      cp fns.mf5.delayed.$run $randompath$mf5dranfile
+    done
+  fi
+fi
+################################################################################
+# D Clean up
+################################################################################
+echo "*** Clean up"
+cd $curdir
+if [ $clean -eq 1 ] ; then
+  rm -rf $nucpath'work/'
+fi
+#
+################################################################################
+# E Gzip files (optional)
+################################################################################
+if [ $gzip -eq 1 ] ; then
+  gzip $nucpath'*/*'
+fi
+#
+echo "AUTOROCHMAN is done"
+#Copyright (C)  2026 A.J. Koning

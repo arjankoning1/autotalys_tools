@@ -1,0 +1,72 @@
+#!/bin/bash
+#
+#            loopsearch (Version March 21 2020)"
+#            (C) Copyright 2020 Arjan Koning"
+#
+# Loop over nuclides for search for best TALYS parameters
+#
+# Example: loopsearch p iaea > search.all
+#
+# Input
+#
+mode=$1
+if [ $mode == n ] || [ $mode == g ] || [ $mode == p ] || [ $mode == d ] || [ $mode == t ] || [ $mode == h ] || [ $mode == a ] ; then
+  proj=$mode
+else
+  echo " Wrong input"
+  exit
+fi
+type=$2
+if [ $type == exp ] || [ $type == iaea ] ; then
+  type=$2
+else
+  echo " Wrong input"
+  exit
+fi
+#
+# Paths
+#
+# AUTOTALYS_ROOT can be set when the installation is outside ~/autotalys.
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+autotalys_root=${AUTOTALYS_ROOT:-"$HOME/autotalys"}
+autotalys="$autotalys_root/bin/autotalys"
+tasman_dir="$autotalys_root/tasman/misc"
+#
+# Flag initialization
+#
+nuclist=${proj}.${type}
+searchfile=search.${proj}${type}
+printf -v autotalys_command '%q' "$autotalys"
+printf -v searchfile_command '%q' "$tasman_dir/$searchfile"
+#
+# Loop over nuclides
+#
+nuclides="$script_dir/$nuclist"
+if [ ! -f "$nuclides" ] ; then
+  echo "Nuclide list does not exist: $nuclides" >&2
+  exit 1
+fi
+cp "$nuclides" nuclides || exit 1
+for inuc in `cat nuclides` ; do
+  element=`echo $inuc | sed 's/_/ /g' | awk '{print $1}'`
+  mass=`echo $inuc | sed 's/_/ /g' | awk '{print $2}'`
+  Liso=`echo $inuc | sed 's/_/ /g' | awk '{print $4}'`
+  if [ $Liso -eq 1 ] ;then
+    mass=$mass'm'
+  fi
+  if [ $Liso -eq 2 ] ;then
+    mass=$mass'n'
+  fi
+  if [ $Liso -eq 3 ] ;then
+    mass=$mass'o'
+  fi
+  nuclide=$element$mass
+  projnuc=$proj'-'$nuclide
+#
+# Create script per nuclide
+#
+  echo "$autotalys_command -proj $proj -element $element -mass $mass -ldmodel 2 -tasmanfile $searchfile_command -E30 -noparauto -search  >& ${projnuc}.log"
+done
+#
+# End loop over nuclides
+#

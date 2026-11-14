@@ -1,0 +1,51 @@
+#!/bin/bash 
+#
+#            nuclistcheck (Version August 29 2019)"
+#            (C) Copyright 2019 Arjan Koning"
+#
+# Loop over nuclides to list all data files which are and are not created
+#
+# First go into the directory with all the TENDL nuclides for one projectile, e.g. tendl/n/
+# Example: nuclistcheck n
+#
+# Files  tendl.no ace.no pendf.no Naninf will be created to display failures
+#
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+nuclides="$script_dir/nuclides"
+proj=$1
+rm tendl.no ace.no pendf.no Naninf
+for inuc in `cat "$nuclides"` ; do
+  element=`echo $inuc | sed 's/_/ /g' | awk '{print $1}'`
+  mass=`echo $inuc | sed 's/_/ /g' | awk '{print $2}'`
+  Liso=`echo $inuc | sed 's/_/ /g' | awk '{print $4}'`
+  if [ $Liso -eq 1 ] ; then
+    mass=$mass'm'
+  fi
+  if [ $Liso -eq 2 ] ; then
+    mass=$mass'n'
+  fi
+  nuc=$element$mass
+  projnuc=$proj'-'$nuc
+  dir=$nuc'/lib/endf/'
+  tendlfile=$dir$projnuc'.tendl'
+  pendffile=$dir$projnuc'.pendf'
+  acefile=$dir$projnuc'.ace'
+  randfile=$dir'random/'${projnuc}*'rand'*
+  if [ ! -e $tendlfile ] ; then
+    echo $nuc >> tendl.no
+  fi
+  if [ $proj == n ] ; then
+    list="$tendlfile $pendffile $acefile $randfile"
+    if [ ! -e $pendffile ] ; then
+      echo $nuc >> pendf.no
+    fi
+    if [ ! -e $acefile ] ; then
+      echo $nuc >> ace.no
+    fi
+  else
+    list="$tendlfile"
+  fi
+  ls $list
+  grep -i NaN $list | grep -v 1451 >> Naninf
+  grep -i Inf $list | grep -v 1451 >> Naninf
+done

@@ -1,0 +1,189 @@
+#!/bin/bash
+#
+#            loopnuc (Version November 2 2025)"
+#            (C) Copyright 2025 Arjan Koning"
+#
+# Loop over nuclides for scripts for TENDL or other projects
+#
+# Example: loopnuc n > n.all
+#          loopnuc tares > tares.all
+#
+# Input
+#
+mode=$1
+if [ $mode == n ] || [ $mode == g ] || [ $mode == p ] || [ $mode == d ] || [ $mode == t ] || [ $mode == h ] || [ $mode == a ] ; then
+  proj=$mode
+  mode=talys
+else
+  if [ $mode == tares ] || [ $mode == tafis ]  || [ $mode == tanes ] || [ $mode == libraries ] ; then
+    proj=n
+  else
+    echo " Wrong input"
+    exit
+  fi
+fi
+#
+# Paths
+#
+# AUTOTALYS_ROOT can be set when the installation is outside ~/autotalys.
+#
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+autotalys_root=${AUTOTALYS_ROOT:-"$HOME/autotalys"}
+bin="$autotalys_root/bin/"
+nucpath="$script_dir/"
+tasmanfile="$autotalys_root/tasman/misc/tasman.tendl2025"
+collectdir="$HOME/collect/"
+#
+# Flag initialization
+#
+nuclist='nuclides.sec'
+if [ $mode == tares ] || [ $mode == tafis ]  || [ $mode == tanes ] || [ $mode == libraries ] ; then
+  nuclist='nuclides.sec'
+fi
+collect=0
+#
+# Settings for TENDL
+#
+nuclist='nuclides.sec'
+cov='-covar'
+bins=60
+energy='-high'
+Nrandomdiv=1
+njoy='-njoy'
+echo $mode
+if [ $mode == talys ] && [ $proj != n ] ; then
+  Nrandomdiv=5
+fi
+if [ $mode == tares ] || [ $mode == tafis ] || [ $mode == tanes ] ; then
+  Nrandomdiv=1
+fi
+#
+# Flags
+#
+printf -v autorochman_path '%q' "$script_dir/autorochman"
+printf -v autorochman_root '%q' "$autotalys_root"
+code="AUTOTALYS_ROOT=$autorochman_root $autorochman_path"
+if [ $mode == talys ] ; then
+  codeflags="-proj $proj -bins $bins $energy -endf $njoy -openmc -residual -isomer -levels -recoil ${cov} -binsrand $bins -plot -subfission -nomcnp -tasmanfile $tasmanfile -tarwork"
+  if [ $collect == 1 ] ; then
+    codeflags=$codeflags" -tar -movedir $collectdir "
+  fi
+  if [ $proj == n ] ; then
+    codeflags=$codeflags' -nofit -best'
+  else
+    codeflags=$codeflags' -fit -nobest'
+  fi
+  code=${bin}autotalys
+fi
+if [ $mode == libraries ] ; then
+  code=${bin}libmaker
+fi
+Amin=5
+Amax=300
+prefix=T
+if [ $mode == tares ] ; then
+  prefix=T1
+  codeflags="-tares -clean"
+fi
+if [ $mode == tafis ] ; then
+  prefix=T2
+  codeflags="-tafis -clean"
+  Amin=215
+fi
+if [ $mode == tanes ] ; then
+  prefix=T3
+  codeflags="-tanes -clean"
+  Amin=215
+fi
+if [ $mode == libraries ] ; then
+  Amin=0
+  Amax=300
+  prefix=L
+  codeflags=
+fi
+scratchflag=
+# scratchflag="-scratch -delete -noclean -gzip"
+# codeflags=$codeflags' -prefix $prefix'
+libflags=
+if [ $mode == talys ] ; then
+  if [ $proj == n ] ; then
+    libflags=' -autonorm -rescue -sdefault -s20 -s60 -acf -eaf -mt'
+  fi
+  if [ $proj == g ] || [ $proj == p ] || [ $proj == d ] ; then
+    libflags=' -sdefault -s0 -s60 -acf -eaf -mt'
+  fi
+  if [ $proj == t ] || [ $proj == h ] || [ $proj == a ] ; then
+    libflags=' -sdefault -s0 -mt'
+  fi
+fi
+#
+# Loop over nuclides
+#
+nuclides=${nucpath}${nuclist}
+if [ ! -f "$nuclides" ] ; then
+  echo "Nuclide list does not exist: $nuclides" >&2
+  exit 1
+fi
+cp "$nuclides" nuclides
+if [ $mode == libraries ] ; then
+  cat "${nucpath}nuclides.light" "${nucpath}nuclides.year" "${nucpath}nuclides.nat" "${nucpath}nuclides.shortyear" > tmp
+  mv tmp nuclides
+fi
+if [ ! -e nuclides ] ; then
+  echo nuclides "does not exist, set nucpath"
+  exit
+fi
+for inuc in `cat nuclides` ; do
+  element=`echo $inuc | sed 's/_/ /g' | awk '{print $1}'`
+  mass=`echo $inuc | sed 's/_/ /g' | awk '{print $2}'`
+  Ltarget=`echo $inuc | sed 's/_/ /g' | awk '{print $3}'`
+  Liso=`echo $inuc | sed 's/_/ /g' | awk '{print $4}'`
+  Nrandom=`echo $inuc | sed 's/_/ /g' | awk '{print $7}'`
+  if [ $mass -lt $Amin ] ; then
+    continue
+  fi
+  if [ $mass -gt $Amax ] ; then
+    continue
+  fi
+  nucflag=" -element $element -mass $mass -Ltarget $Ltarget -Liso $Liso"
+  tmp=$((10#$Nrandom))
+  Nrandom=$((tmp / Nrandomdiv))
+  tmp=`echo $((Nrandom>3 ? Nrandom:3))`
+  Nrandom=$tmp
+  if [ $mode == talys ] ; then
+    covflag="-ntalys  $Nrandom"
+  else
+    if [ $mode == libraries ] ; then
+      covflag=
+    else
+      covflag="-nrandom $Nrandom"
+    fi
+  fi
+  if [ $Liso -eq 1 ] ;then
+    mass=$mass'm'
+  fi
+  if [ $Liso -eq 2 ] ;then
+    mass=$mass'n'
+  fi
+  if [ $Liso -eq 3 ] ;then
+    mass=$mass'o'
+  fi
+  nuclide=$element$mass
+  projnuc=$proj'-'$nuclide
+  if [ $mode == libraries ] ; then
+    nucflag=" $element $mass $exfor "
+    projnuc=$nuclide
+  fi
+#
+# Create script per nuclide
+#
+  cat > ${projnuc} << EOI
+#!/bin/bash
+$code $nucflag $codeflags $covflag $libflags
+EOI
+  chmod a+x $projnuc
+  echo $projnuc
+done
+#
+# End loop over nuclides
+#
