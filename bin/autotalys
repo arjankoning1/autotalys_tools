@@ -3574,7 +3574,8 @@ EOI
 # E.2a OpenMC transport validation
 ################################################################################
 #
-    if [ "$openmc" -eq 1 ] && [ "$lib" -eq 1 ] && [ $Liso -eq 0 ] ; then
+    if [ "$openmc" -eq 1 ] && [ "$lib" -eq 1 ]; then
+
       echo "*** Run OpenMC for $filename"
       require_exe "$autoopenmc"
 
@@ -3582,12 +3583,33 @@ EOI
         die "OpenMC: ENDF file missing: $filename"
       fi
 
+      # Shared ENDF/B-VIII.1 photoatomic HDF5 library
+      photo_dir="$LIBRARIES_DIR/photoatomic/endfb8.1"
+      photo_xs="$photo_dir/cross_sections.xml"
+      photo_file="$photo_dir/photon/${element}.h5"
+  
+      # Optional photon transport
+      openmc_photon_args=()
+
+      if [ -s "$photo_xs" ] && [ -s "$photo_file" ]; then
+        echo "OpenMC: neutron + photon transport"
+        echo "Photoatomic data: $photo_xs"
+        openmc_photon_args=(-photon-xs "$photo_xs")
+      else
+        echo "OpenMC: neutron-only transport"
+        echo "Photoatomic data unavailable for $element"
+        openmc_photon_args=(-no-photons)
+      fi
+
+      # Run OpenMC with the selected transport mode
       if ! "$autoopenmc" \
            -file "$PWD/$filename" \
            -element "$element" \
            -mass "$mass" \
-           -no-photons \
-           -outdir "${pathname}openmc"; then
+           -libraries "$LIBRARIES_DIR" \
+           -outdir "${pathname}openmc" \
+           "${openmc_photon_args[@]}"; then
+
         die "OpenMC validation failed for $filename"
       fi
     fi
