@@ -64,26 +64,38 @@ sed '/^[[:space:]]*PARAMETER (MAXLEGE /s/120000/2400/' \
   source/EVALPLOT/evalplot.h > source/EVALPLOT/evalplot.h.tmp
 mv source/EVALPLOT/evalplot.h.tmp source/EVALPLOT/evalplot.h
 
-# Remove the static gfortran link flag from PREPRO's main Makefile.
-sed '/^[[:space:]]*FLAGS[[:space:]]*=/s/[[:space:]]*-static-libgfortran//g' \
-  source/Makefile > source/Makefile.tmp
-mv source/Makefile.tmp source/Makefile
+# Remove the static gfortran link flag from PREPRO's Makefiles.
+for makefile in source/Makefile source/COMPLOT/Makefile source/EVALPLOT/Makefile; do
+  sed 's/[[:space:]]*-static-libgfortran//g' "$makefile" > "$makefile.tmp"
+  mv "$makefile.tmp" "$makefile"
+done
 
 cat > install_PREPRO.bash << EOI
-cd source
+#!/usr/bin/env bash
+
+cd "$(dirname "$0")/source"
+
 make clean
-make
-make install graphics=yes
+make FLAGS="-O0"
+make install FLAGS="-O0" graphics=yes
+
+# Verify installation before continuing
+test -x ../bin/activate
+test -x ../bin/linear
+test -x ../bin/sigma1
+
 make clean
-cd ..
-cd bin
-for executable in *; do
-  ln -sfn "../PREPRO/bin/\$executable" "$bin/\$executable"
-done
-cd ..
 EOI
+
 chmod +x ./install_PREPRO.bash
 ./install_PREPRO.bash
+
+# Link only successfully installed executables
+for executable in "$autotalys"/PREPRO/bin/*; do
+    [[ -f "$executable" && -x "$executable" ]] || continue
+    name="$(basename "$executable")"
+    ln -sfn "../PREPRO/bin/$name" "$bin/$name"
+done
 echo
 
 cd $autotalys 
