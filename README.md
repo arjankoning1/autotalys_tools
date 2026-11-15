@@ -32,7 +32,7 @@ From the `autotalys_tools/` directory, run:
 ```
 
 The script can also be invoked by its full path from another directory. 
-All seven executables are installed in `autotalys_tools/bin/` after compilation succeeds. Existing executables are replaced.
+The seven listed free-form Fortran utilities **and `njoycovx`** (fixed-form Fortran) are installed in `autotalys_tools/bin/` after compilation succeeds. Existing executables are replaced.
 
 The default compiler is `gfortran`, with flags `-w -O3`. Compiler and compilation options can be supplied as arguments or 
 environment variables:
@@ -117,11 +117,13 @@ These utilities do not share a command-line help interface.
 Full validation of most utilities requires suitable nuclear-data inputs and external datasets. 
 No sample suite is included in this directory.
 
+The `bin/install_autotalys.bash` file is **not** the standalone utility installer. The AUTOTALYS cloning scripts copy it to the root of the assembled AUTOTALYS tree, where it installs and links the complete multi-package system. Keep this bootstrap script in `bin/`; it is intended to run only after that relocation. The standalone installer remains `./install_autotalys_tools.bash` at this repository's root.
+
 ## The AUTOTALYS tools package
 
 - `README.md`: this README file
 - `install_autotalys_tools.bash`: installation script
 - `source/`: the seven Fortran source files
-- `bin/`: compiled executables
+- `bin/`: compiled executables, workflow scripts, and the bootstrap `install_autotalys.bash` copied by the AUTOTALYS cloning scripts
 
 Use `install_autotalys_tools.bash` for the installation procedure described above.
