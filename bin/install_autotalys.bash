@@ -64,6 +64,11 @@ sed '/^[[:space:]]*PARAMETER (MAXLEGE /s/120000/2400/' \
   source/EVALPLOT/evalplot.h > source/EVALPLOT/evalplot.h.tmp
 mv source/EVALPLOT/evalplot.h.tmp source/EVALPLOT/evalplot.h
 
+# Remove the static gfortran link flag from PREPRO's main Makefile.
+sed '/^[[:space:]]*FLAGS[[:space:]]*=/s/[[:space:]]*-static-libgfortran//g' \
+  source/Makefile > source/Makefile.tmp
+mv source/Makefile.tmp source/Makefile
+
 cat > install_PREPRO.bash << EOI
 cd source
 make clean
