@@ -249,11 +249,24 @@ install_openmc() (
   echo "OpenMC configuration written to config/openmc.conf"
 )
 
-if install_openmc; then
-  echo "OpenMC installation/check completed."
-else
-  echo "WARNING: Continuing without OpenMC."
-fi
+# Keep OpenMC genuinely optional: regular AUTOTALYS installation must not
+# create or modify a Conda environment unless explicitly requested.
+case "${INSTALL_OPENMC:-0}" in
+  0)
+    echo "OpenMC installation skipped (set INSTALL_OPENMC=1 to enable)."
+    ;;
+  1)
+    if install_openmc; then
+      echo "OpenMC installation/check completed."
+    else
+      echo "WARNING: Continuing without OpenMC."
+    fi
+    ;;
+  *)
+    echo "ERROR: INSTALL_OPENMC must be 0 or 1" >&2
+    exit 2
+    ;;
+esac
 
 echo
 
